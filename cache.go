@@ -134,6 +134,14 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 	}()
 
+	//todo write docs
+	go func() {
+		for {
+			f := <-cache.sl_channel
+			f()
+		}
+	}()
+
 	//start the recycle go routine
 	safeInfiLoop(func() {
 

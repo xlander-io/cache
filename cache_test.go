@@ -1,27 +1,27 @@
 package cache
 
-// import (
-// 	"log"
-// 	"math/rand"
-// 	"net/http"
-// 	"runtime"
-// 	"strconv"
-// 	"sync"
-// 	"testing"
-// 	"time"
-// )
+import (
+	"log"
+	"runtime"
+	"strconv"
+	"testing"
+)
 
-// type Person struct {
-// 	Name     string
-// 	Age      int
-// 	Location string
-// }
+type Person struct {
+	Name     string
+	Age      int
+	Location string
+}
 
-// func printMemStats() {
-// 	var m runtime.MemStats
-// 	runtime.ReadMemStats(&m)
-// 	log.Printf("Alloc = %v KB, TotalAlloc = %v KB, Sys = %v KB,Lookups = %v NumGC = %v\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.Lookups, m.NumGC)
-// }
+func (p *Person) CacheBytes() int {
+	return 100
+}
+
+func printMemStats() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	log.Printf("Alloc = %v KB, TotalAlloc = %v KB, Sys = %v KB,Lookups = %v NumGC = %v\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.Lookups, m.NumGC)
+}
 
 // func Test_Delete(t *testing.T) {
 // 	lc := New()
@@ -156,7 +156,7 @@ package cache
 // }
 
 // func Test_RandSet(t *testing.T) {
-// 	lc := New()
+// 	lc, _ := New(nil)
 // 	a := Person{"Jack", 18, "America"}
 
 // 	lc.Set("a", a, 15)
@@ -304,35 +304,35 @@ package cache
 // 	}
 // }
 
-// func BenchmarkLocalReference_SetPointer(b *testing.B) {
-// 	lc := New()
-// 	a := &Person{"Jack", 18, "America"}
+func BenchmarkLocalReference_SetPointer(b *testing.B) {
+	lc, _ := New(nil)
+	a := &Person{"Jack", 18, "America"}
 
-// 	keyArray := []string{}
-// 	for i := 0; i < b.N; i++ {
-// 		keyArray = append(keyArray, strconv.Itoa(i))
-// 	}
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		lc.Set(keyArray[i], a, 300)
-// 	}
-// }
+	keyArray := []string{}
+	for i := 0; i < b.N; i++ {
+		keyArray = append(keyArray, strconv.Itoa(i))
+	}
 
-// func BenchmarkLocalReference_GetPointer(b *testing.B) {
-// 	lc := New()
-// 	a := &Person{"Jack", 18, "America"}
-// 	lc.Set("1", a, 300)
-// 	var e *Person
-// 	log.Println(e)
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		it, _ := lc.Get("1")
-// 		e = it.(*Person)
-// 	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		lc.Set(keyArray[i], a, 300)
+	}
+}
 
-// }
+func BenchmarkLocalReference_GetPointer(b *testing.B) {
+	lc, _ := New(nil)
+	a := &Person{"Jack", 18, "America"}
+	lc.Set("1", a, 300)
+	var e *Person
+	log.Println(e)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		it, _ := lc.Get("1")
+		e = it.(*Person)
+	}
+}
 
 // func Benchmark_syncMap(b *testing.B) {
 // 	var m sync.Map
