@@ -20,8 +20,9 @@ type CacheConfig struct {
 	MaxTtlSecs               int64 // max cache item duration in secs
 	RecycleCheckIntervalSecs int   // recycle process cycle in secs
 	RecycleRatioThreshold    int   // 1-100, old items are recycled once cache reach limit, e.g: 30 for 30% percentage
+	RecycleBatchPercent      int   // 1-100, the percentage to be recycled in a batch
 	SkipListBufferSize       int   // chan buffer between internal map and skiplist
-	DefaultTtlSecs           int64 //default cache item duration in secs
+	DefaultTtlSecs           int64 // default cache item duration in secs
 }
 
 type Cache struct {
@@ -39,21 +40,21 @@ type Cache struct {
 	now_unixtime  int64
 }
 
+var cache_config = &CacheConfig{
+	CacheBytesLimit:          1024 * 1024 * 50, //50Mbytes
+	MaxTtlSecs:               7200,             //2 hours
+	RecycleCheckIntervalSecs: 30,               //30 secs
+	RecycleRatioThreshold:    80,               //80% usage will trigger recycling
+	RecycleBatchPercent:      10,               //10% will be recycled in a batch
+	SkipListBufferSize:       20000,
+	DefaultTtlSecs:           30, //default cache item duration is 30 secs
+
+}
+
 func New(user_config *CacheConfig) (*Cache, error) {
 
 	//new a cache with default config
-
-	cache_config := &CacheConfig{
-		CacheBytesLimit:          1024 * 1024 * 50, //50Mbytes
-		MaxTtlSecs:               7200,             //2 hours
-		RecycleCheckIntervalSecs: 30,               //30 secs
-		RecycleRatioThreshold:    80,               //80% usage will trigger recycling
-		SkipListBufferSize:       20000,
-		DefaultTtlSecs:           30, //default cache item duration is 30 secs
-	}
-
 	if user_config != nil {
-
 		//
 		if user_config.CacheBytesLimit < 0 {
 			return nil, errors.New("config CacheBytesLimit error")
@@ -82,12 +83,21 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 
 		//
-		if user_config.RecycleRatioThreshold < 0 {
-			return nil, errors.New("config RecycleRatioThreshold error")
+		if user_config.RecycleRatioThreshold <= 0 || user_config.RecycleRatioThreshold > 100 {
+			return nil, errors.New("config RecycleRatioThreshold error, val between [1,100]")
 		} else if user_config.RecycleRatioThreshold == 0 {
 			//bypass using default value
 		} else {
 			cache_config.RecycleRatioThreshold = user_config.RecycleRatioThreshold
+		}
+
+		//
+		if user_config.RecycleBatchPercent <= 0 || user_config.RecycleBatchPercent > 100 {
+			return nil, errors.New("config RecycleBatchPercent error, val between [1,100]")
+		} else if user_config.RecycleBatchPercent == 0 {
+			//bypass using default value
+		} else {
+			cache_config.RecycleBatchPercent = user_config.RecycleBatchPercent
 		}
 
 		//
@@ -126,13 +136,20 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 	//start the recycle go routine
 	safeInfiLoop(func() {
-		// //remove expired keys
-		// cache.s.RemoveByScore(cache.now_unixtime)
 
-		// //check overlimit
-		// for cache.s.TotalBytes() >= int64(cache.recycle_bytes_threshold) {
-		// 	cache.s.RemoveByRank(0, cache.s.Len()/10+1) //10% recycled and +1 for safety
-		// }
+		//remove expired keys
+		keys := cache.skip_list.GetRangeByScore(0, cache.now_unixtime)
+		for _, key := range keys {
+			cache.Delete(key)
+		}
+
+		//check overlimit
+		for int64(cache.TotalBytes()) >= cache.cache_config.CacheBytesLimit {
+			keys := cache.skip_list.GetRangeByRank(0, int64(cache.element_count*int32(cache.cache_config.RecycleBatchPercent))/100+1) //+1 for safety
+			for _, key := range keys {
+				cache.Delete(key)
+			}
+		}
 
 	}, nil, int64(cache.cache_config.RecycleCheckIntervalSecs), 30)
 
@@ -145,25 +162,20 @@ func (cache *Cache) GetUnixTime() int64 {
 	return cache.now_unixtime
 }
 
-// // if not found or timeout => return nil,0
-// // if found and not timeout =>return not_nil_pointer,left_secs
-// func (cache *Cache) Get(key string) (value CacheItem, ttl int64) {
-// 	//check expire
-// 	e, exist := lf.s.Get(key)
-// 	if !exist {
-// 		return nil, 0
-// 	}
-// 	if e.Score <= lf.now_unixtime {
-// 		return nil, 0
-// 	}
-// 	return e.Value.(CacheItem), e.Score - lf.now_unixtime
-// }
-
-// func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
-// 	return cache.set(key, cache_element{
-
-// 	}, ttlSecond)
-// }
+// todo write docs
+func (cache *Cache) Get(key string) (value CacheItem, ttl int64) {
+	prev_ele_, pre_ele_exist_ := cache.sync_map.Load(key)
+	if !pre_ele_exist_ {
+		return nil, 0
+	} else {
+		pre_ele := prev_ele_.(*cache_element)
+		if pre_ele.Score <= cache.now_unixtime {
+			return nil, 0
+		} else {
+			return pre_ele.Value.(CacheItem), pre_ele.Score - cache.now_unixtime
+		}
+	}
+}
 
 // todo write docs
 func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
@@ -176,23 +188,27 @@ func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
 	}
 
 	if ttlSecond < 0 {
-		return errors.New("ttl error")
+		return errors.New("ttl <0 error")
 	}
 
 	if ttlSecond > cache.cache_config.MaxTtlSecs {
 		ttlSecond = cache.cache_config.MaxTtlSecs
 	}
 
-	//var expireTime int64
-	ttlLeft := cache.cache_config.DefaultTtlSecs
-	if ttlSecond == 0 {
-		//keep
-		prev_ttl_left, exist := cache.ttl(key)
-		if exist {
-			ttlLeft = prev_ttl_left
-		}
+	//default expire time
+	expire_time := cache.now_unixtime + cache.cache_config.DefaultTtlSecs
+
+	//
+	var pre_ele *cache_element = nil
+	prev_ele_, pre_ele_exist_ := cache.sync_map.Load(key)
+	if pre_ele_exist_ {
+		pre_ele = prev_ele_.(*cache_element)
 	}
-	expire_time := cache.now_unixtime + ttlLeft
+
+	//keep old ttl
+	if pre_ele_exist_ && ttlSecond == 0 {
+		expire_time = pre_ele.Score
+	}
 
 	//set to map
 	cache.sync_map.Store(key, &cache_element{
@@ -200,38 +216,55 @@ func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
 		Value: value,
 	})
 
+	//statistics
+	if pre_ele_exist_ {
+		//cache.element_count--
+		//cache.element_count++
+		cache.element_bytes -= int64(pre_ele.Value.(CacheItem).CacheBytes())
+		cache.element_bytes += int64(value.CacheBytes())
+	} else {
+		cache.element_count++
+		cache.element_bytes += int64(value.CacheBytes())
+	}
+
 	//dispatch update msg to chan
 	cache.sl_channel <- func() {
-		cache.skip_list.remove_all_member(key)
+		if pre_ele_exist_ {
+			cache.skip_list.remove(key, pre_ele.Score)
+		}
 		cache.skip_list.insert(key, expire_time)
 	}
 
 	return nil
 }
 
-// func (lf *Cache) Delete(key string) {
-// 	lf.s.Remove(key)
-// }
+func (cache *Cache) Delete(key string) {
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
 
-// return the left cached time in secs
-func (cache *Cache) ttl(key string) (int64, bool) {
+	prev_ele_, pre_ele_exist_ := cache.sync_map.Load(key)
+	if pre_ele_exist_ {
+		//
+		pre_ele := prev_ele_.(*cache_element)
+		cache.sync_map.Delete(key)
 
-	e, exist := cache.sync_map.Load(key)
-	if !exist {
-		return 0, false
+		//statistics
+		cache.element_count--
+		cache.element_bytes -= int64(pre_ele.Value.(CacheItem).CacheBytes())
+
+		//dispatch update msg to chan
+		cache.sl_channel <- func() {
+			cache.skip_list.remove(key, pre_ele.Score)
+		}
 	}
-
-	c_e := e.(cache_element)
-	ttl := c_e.Score - cache.now_unixtime
-
-	if ttl <= 0 {
-		return 0, false
-	}
-	return ttl, true
 }
 
 func (cache *Cache) TotalItems() int32 {
 	return cache.element_count
+}
+
+func (cache *Cache) TotalBytes() int32 {
+	return int32(cache.element_bytes)
 }
 
 func safeInfiLoop(todo func(), onPanic func(err interface{}), interval int64, redoDelaySec int64) {
