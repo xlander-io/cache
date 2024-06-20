@@ -20,7 +20,7 @@ type CacheConfig struct {
 	MaxTtlSecs               int64 // max cache item duration in secs
 	RecycleCheckIntervalSecs int   // recycle process cycle in secs
 	RecycleRatioThreshold    int   // 1-100, old items are recycled once cache reach limit, e.g: 30 for 30% percentage
-	RecycleBatchPercent      int   // 1-100, the percentage to be recycled in a batch
+	RecycleBatchSize         int   // number of items to be recycled in a batch
 	SkipListBufferSize       int   // chan buffer between internal map and skiplist
 	DefaultTtlSecs           int64 // default cache item duration in secs
 }
@@ -43,9 +43,9 @@ type Cache struct {
 var cache_config = &CacheConfig{
 	CacheBytesLimit:          1024 * 1024 * 50, //50Mbytes
 	MaxTtlSecs:               7200,             //2 hours
-	RecycleCheckIntervalSecs: 30,               //30 secs
+	RecycleCheckIntervalSecs: 5,                //5 secs for high efficiency
 	RecycleRatioThreshold:    80,               //80% usage will trigger recycling
-	RecycleBatchPercent:      10,               //10% will be recycled in a batch
+	RecycleBatchSize:         1000,             //1000 items recycled in a batch
 	SkipListBufferSize:       20000,
 	DefaultTtlSecs:           30, //default cache item duration is 30 secs
 
@@ -83,7 +83,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 
 		//
-		if user_config.RecycleRatioThreshold <= 0 || user_config.RecycleRatioThreshold > 100 {
+		if user_config.RecycleRatioThreshold < 0 || user_config.RecycleRatioThreshold > 100 {
 			return nil, errors.New("config RecycleRatioThreshold error, val between [1,100]")
 		} else if user_config.RecycleRatioThreshold == 0 {
 			//bypass using default value
@@ -92,16 +92,16 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 
 		//
-		if user_config.RecycleBatchPercent <= 0 || user_config.RecycleBatchPercent > 100 {
-			return nil, errors.New("config RecycleBatchPercent error, val between [1,100]")
-		} else if user_config.RecycleBatchPercent == 0 {
+		if user_config.RecycleBatchSize < 0 {
+			return nil, errors.New("config RecycleBatchSize error, val between [1,100]")
+		} else if user_config.RecycleBatchSize == 0 {
 			//bypass using default value
 		} else {
-			cache_config.RecycleBatchPercent = user_config.RecycleBatchPercent
+			cache_config.RecycleBatchSize = user_config.RecycleBatchSize
 		}
 
 		//
-		if user_config.SkipListBufferSize <= 0 {
+		if user_config.SkipListBufferSize < 0 {
 			return nil, errors.New("config SkipListBufferSize error")
 		} else if user_config.SkipListBufferSize == 0 {
 			//bypass using default value
@@ -153,7 +153,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 		//check overlimit
 		for int64(cache.TotalBytes()) >= cache.cache_config.CacheBytesLimit {
-			keys := cache.skip_list.GetRangeByRank(0, int64(cache.element_count*int32(cache.cache_config.RecycleBatchPercent))/100+1) //+1 for safety
+			keys := cache.skip_list.GetRangeByRank(0, int64(cache.cache_config.RecycleBatchSize))
 			for _, key := range keys {
 				cache.Delete(key)
 			}
