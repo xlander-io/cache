@@ -8,13 +8,6 @@ const (
 	maxLevel = 32
 )
 
-// Element is a key-score pair
-type Element struct {
-	//Member string
-	Score int64
-	Value interface{}
-}
-
 // Level aspect of a node
 type Level struct {
 	forward *node // forward node has greater score
@@ -22,7 +15,6 @@ type Level struct {
 }
 
 type node struct {
-	//Element
 	Member   string
 	Score    int64
 	backward *node
@@ -34,7 +26,6 @@ type skiplist struct {
 	tail   *node
 	length int32
 	level  int16
-	// lock   sync.Mutex
 }
 
 func makeNode(level int16, score int64, member string) *node {
@@ -179,6 +170,29 @@ func (skiplist *skiplist) remove(member string, score int64) {
 	if node != nil && score == node.Score && node.Member == member {
 		skiplist.removeNode(node, update)
 	}
+}
+
+/*
+ * return: has found and removed node
+ */
+func (skiplist *skiplist) remove_all_member(member string) {
+	/*
+	 * find backward node (of target) or last node of each level
+	 * their forward need to be updated
+	 */
+	// update := make([]*node, maxLevel)
+	// node := skiplist.header
+	// for i := skiplist.level - 1; i >= 0; i-- {
+	// 	for node.level[i].forward != nil &&
+	// 		(node.level[i].forward.Score < score || (node.level[i].forward.Score == score && node.level[i].forward.Member < member)) {
+	// 		node = node.level[i].forward
+	// 	}
+	// 	update[i] = node
+	// }
+	// node = node.level[0].forward
+	// if node != nil && score == node.Score && node.Member == member {
+	// 	skiplist.removeNode(node, update)
+	// }
 }
 
 /*
