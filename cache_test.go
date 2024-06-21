@@ -392,40 +392,56 @@ func Test_Cache_Expire(t *testing.T) {
 	}
 }
 
-// func Test_SetAndRemove(t *testing.T) {
-// 	a := Person{"Jack", 18, "America"}
-// 	lc := New()
+func Test_Cache_SetAndRemove(t *testing.T) {
+	jack := &Person{"Jack", 18, "America"}
+	cache, err := New(nil)
 
-// 	log.Println("start")
-// 	printMemStats()
+	if nil != err {
+		t.Fatalf("New cache instance failed! err=%v", err)
+	}
 
-// 	for i := 0; i < 20; i++ {
-// 		//set
-// 		for j := 0; j < 10000; j++ {
-// 			lc.Set(strconv.Itoa(j), a, 1)
-// 		}
+	log.Println("start")
+	printMemStats()
 
-// 		log.Println("round:", i)
-// 		log.Println("finish set")
-// 		printMemStats()
+	for i := 0; i < 20; i++ {
+		//set
+		for j := 0; j < 10000; j++ {
+			cache.Set(strconv.Itoa(j), jack, 1)
+		}
 
-// 		time.Sleep(2 * time.Second)
+		if int32(10000) != cache.TotalItems() {
+			t.Fatalf("count of cache's total items should be 10000, but %d", cache.TotalItems())
+		}
+
+		if int32(10000*jack.CacheBytes()) != cache.TotalBytes() {
+			t.Fatalf("count of cache's total items should be 10000*%d, but %d", jack.CacheBytes(), cache.TotalItems())
+		}
+
+		log.Println("round:", i)
+		log.Println("finish set")
+		printMemStats()
+
+		time.Sleep(2 * time.Second)
+	}
+
+	log.Println("finish")
+	printMemStats()
+}
+
+// func Test_Cache_BigAmountKey(t *testing.T) {
+// 	jack := &Person{"Jack", 18, "America"}
+// 	cache, err := New(nil)
+
+// 	if nil != err {
+// 		t.Fatalf("New cache instance failed! err=%v", err)
 // 	}
 
-// 	log.Println("finish")
-// 	printMemStats()
-// }
-
-// func Test_BigAmountKey(t *testing.T) {
-// 	a := Person{"Jack", 18, "America"}
-// 	lc := New()
-
 // 	log.Println("start")
 // 	printMemStats()
 
-// 	go func() {
-// 		log.Println(http.ListenAndServe("0.0.0.0:10000", nil))
-// 	}()
+// 	// go func() {
+// 	// 	log.Println(http.ListenAndServe("0.0.0.0:10000", nil))
+// 	// }()
 
 // 	for i := 0; i < 30; i++ {
 // 		log.Println("----------")
@@ -434,7 +450,7 @@ func Test_Cache_Expire(t *testing.T) {
 // 		printMemStats()
 
 // 		for i := 0; i < 1000000; i++ {
-// 			lc.Set(strconv.Itoa(i), a, int64(rand.Intn(10)+1))
+// 			cache.Set(strconv.Itoa(i), jack, int64(rand.Intn(10)+1))
 // 		}
 // 		log.Println("mem after set")
 // 		printMemStats()
