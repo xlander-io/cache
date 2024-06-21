@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-	"unsafe"
 
 	"github.com/xlander-io/cache"
 )
@@ -16,7 +15,7 @@ type Person struct {
 }
 
 func (p *Person) CacheBytes() int {
-	return int(unsafe.Sizeof(*p)) + len(p.Name) + len(p.Location)
+	return 100
 }
 
 func main() {
@@ -26,15 +25,15 @@ func main() {
 	p1 := &Person{Name: "jack", Age: 12, Location: "x"}
 	//p2 := &Person{Name: "rose", Age: 12, Location: "xxasdfasdfadfxxasdfasdfadf"}
 
-	for i := 0; i < 50000; i++ {
-		local_cache.Set(strconv.Itoa(i), p1, 5)
-	}
-
-	for i := 50000; i < 100000; i++ {
+	for i := 0; i < 500000; i++ {
 		local_cache.Set(strconv.Itoa(i), p1, 30)
 	}
 
-	fmt.Println(local_cache.TotalItems())
+	// for i := 50000; i < 100000; i++ {
+	// 	local_cache.Set(strconv.Itoa(i), p1, 30)
+	// }
+
+	fmt.Println(local_cache.TotalBytes())
 
 	item, _ := local_cache.Get("jack")
 	fmt.Println(item)

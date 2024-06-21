@@ -152,7 +152,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 
 		//check overlimit
-		for int64(cache.TotalBytes()) >= cache.cache_config.CacheBytesLimit {
+		for int64(cache.TotalBytes()) >= cache.recycle_bytes_threshold {
 			keys := cache.skip_list.GetRangeByRank(0, int64(cache.cache_config.RecycleBatchSize))
 			for _, key := range keys {
 				cache.Delete(key)
