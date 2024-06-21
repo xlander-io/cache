@@ -204,7 +204,7 @@ func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
 	}
 
 	//default expire time
-	expire_time := cache.now_unixtime + cache.cache_config.DefaultTtlSecs
+	expire_time := cache.now_unixtime + ttlSecond
 
 	//
 	var pre_ele *cache_element = nil

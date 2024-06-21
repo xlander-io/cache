@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 	"unsafe"
 
 	"github.com/xlander-io/cache"
@@ -22,21 +24,28 @@ func main() {
 	local_cache, _ := cache.New(nil)
 
 	p1 := &Person{Name: "jack", Age: 12, Location: "x"}
-	p2 := &Person{Name: "rose", Age: 12, Location: "xxasdfasdfadfxxasdfasdfadf"}
+	//p2 := &Person{Name: "rose", Age: 12, Location: "xxasdfasdfadfxxasdfasdfadf"}
 
 	fmt.Println(local_cache.TotalItems())
-	local_cache.Set("jack", p1, 300)
-	local_cache.Set("rose", p2, 300)
+	for i := 0; i < 100000; i++ {
+		local_cache.Set(strconv.Itoa(i), p1, 5)
+	}
 	fmt.Println(local_cache.TotalItems())
 
 	item, _ := local_cache.Get("jack")
 	fmt.Println(item)
 	//
-	jack, _ := local_cache.Get("jack")
-	rose, _ := local_cache.Get("rose")
+	jack, _ := local_cache.Get("0")
+	//rose, _ := local_cache.Get("rose")
 
-	fmt.Println(jack.CacheBytes())
-	fmt.Println(rose.CacheBytes())
+	fmt.Println(jack)
+	//fmt.Println(rose.CacheBytes())
+
+	fmt.Println(local_cache.TotalItems())
+
+	//system.Sleep(15 * time.Second)
+	time.Sleep(15 * time.Second)
+	fmt.Println(local_cache.TotalItems())
 
 	// //set ""
 	// v := "nothing value"
