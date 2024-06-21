@@ -273,7 +273,6 @@ func (skiplist *skiplist) getLastInScoreRange(min int64, max int64) *node {
  * return members elements
  */
 func (skiplist *skiplist) GetRangeByScore(min int64, max int64) (members []string) {
-	update := make([]*node, maxLevel)
 	members = make([]string, 0)
 	// find backward nodes (of target range) or last node of each level
 	node := skiplist.header
@@ -284,21 +283,19 @@ func (skiplist *skiplist) GetRangeByScore(min int64, max int64) (members []strin
 			}
 			node = node.level[i].forward
 		}
-		update[i] = node
 	}
 
 	// node is the first one within range
 	node = node.level[0].forward
 
-	// remove nodes in range
+	// collect member of nodes in range
 	for node != nil {
 		if max < (node.Score) { // already out of range
 			break
 		}
-		next := node.level[0].forward
 		member := node.Member
 		members = append(members, member)
-		node = next
+		node = node.level[0].forward
 	}
 	return members
 }
@@ -306,7 +303,6 @@ func (skiplist *skiplist) GetRangeByScore(min int64, max int64) (members []strin
 // 1-based rank, including start, exclude stop
 func (skiplist *skiplist) GetRangeByRank(start int64, stop int64) (members []string) {
 	var i int64 = 0 // rank of iterator
-	update := make([]*node, maxLevel)
 	members = make([]string, 0)
 
 	// scan from top level
@@ -316,18 +312,16 @@ func (skiplist *skiplist) GetRangeByRank(start int64, stop int64) (members []str
 			i += node.level[level].span
 			node = node.level[level].forward
 		}
-		update[level] = node
 	}
 
 	i++
 	node = node.level[0].forward // first node in range
 
-	// remove nodes in range
+	// collect member of nodes in range
 	for node != nil && i < stop {
-		next := node.level[0].forward
 		member := node.Member
 		members = append(members, member)
-		node = next
+		node = node.level[0].forward
 		i++
 	}
 	return members
