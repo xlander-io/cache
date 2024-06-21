@@ -338,7 +338,7 @@ func (skiplist *skiplist) GetRangeByRank(start int64, stop int64) (members []str
 // 	node := skiplist.header
 // 	for i := skiplist.level - 1; i >= 0; i-- {
 // 		for node.level[i].forward != nil {
-// 			if min < (node.level[i].forward.Score) { // already in range
+// 			if min <= (node.level[i].forward.Score) { // already in range
 // 				break
 // 			}
 // 			node = node.level[i].forward
@@ -351,7 +351,7 @@ func (skiplist *skiplist) GetRangeByRank(start int64, stop int64) (members []str
 
 // 	// remove nodes in range
 // 	for node != nil {
-// 		if max < (node.Score) { // already out of range
+// 		if max <= (node.Score) { // already out of range
 // 			break
 // 		}
 // 		next := node.level[0].forward
