@@ -1,6 +1,8 @@
 package cache
 
-import "testing"
+import (
+	"testing"
+)
 
 func Test_Simple(t *testing.T) {
 	sl := makeSkiplist()
@@ -12,7 +14,7 @@ func Test_Simple(t *testing.T) {
 	}
 
 	{
-		rank := sl.getRank("A", 100)
+		rank := sl.getRank("A", 100) // rank is 1 based
 
 		if int64(1) != rank {
 			t.Fatalf("the first node in skiplist should has rank 1, but %d", rank)
@@ -138,6 +140,78 @@ func Test_Simple(t *testing.T) {
 			if C.Score != 200 {
 				t.Fatalf("expect: %v, but: %v", 100, C.Score)
 			}
+		}
+	}
+
+}
+
+func Test_GetRangeByXXX(t *testing.T) {
+
+	sl := makeSkiplist()
+
+	sl.insert("A", 100)
+	sl.insert("B", 100)
+	sl.insert("C", 200)
+	sl.insert("D", 300)
+	sl.insert("E", 300)
+	sl.insert("F", 400)
+	sl.insert("G", 500)
+
+	if int32(7) != sl.length {
+		t.Fatalf("skiplist's length should be 7 now, but %d", sl.length)
+	}
+
+	{
+		members := sl.GetRangeByScore(100, 300) // range is [100, 300), NOT (100, 300) or (100, 300]
+
+		if int(3) != len(members) {
+			t.Fatalf("members' length should be 3 now, but %d", len(members))
+		}
+
+		if string("A") != members[0] {
+			t.Fatalf("member[0] should be A, but %s", members[0])
+		}
+		if string("B") != members[1] {
+			t.Fatalf("member[1] should be B, but %s", members[1])
+		}
+		if string("C") != members[2] {
+			t.Fatalf("member[2] should be C, but %s", members[2])
+		}
+	}
+
+	{
+		members := sl.GetRangeByRank(1, 4) // rank is 1 based, so here range is [1, 4)
+
+		if int(3) != len(members) {
+			t.Fatalf("members' length should be 3 now, but %d", len(members))
+		}
+
+		if string("A") != members[0] {
+			t.Fatalf("member[0] should be A, but %s", members[0])
+		}
+		if string("B") != members[1] {
+			t.Fatalf("member[1] should be B, but %s", members[1])
+		}
+		if string("C") != members[2] {
+			t.Fatalf("member[2] should be C, but %s", members[2])
+		}
+	}
+
+	{
+		members := sl.GetRangeByRank(0, 4) // rank is 1 based, so here range is [1, 4)
+
+		if int(3) != len(members) {
+			t.Fatalf("members' length should be 3 now, but %d", len(members))
+		}
+
+		if string("A") != members[0] {
+			t.Fatalf("member[0] should be A, but %s", members[0])
+		}
+		if string("B") != members[1] {
+			t.Fatalf("member[1] should be B, but %s", members[1])
+		}
+		if string("C") != members[2] {
+			t.Fatalf("member[2] should be C, but %s", members[2])
 		}
 	}
 

@@ -270,7 +270,8 @@ func (skiplist *skiplist) getLastInScoreRange(min int64, max int64) *node {
 }
 
 /*
- * return members elements
+ * return members elements which score is in range [min, max). INCLUDE min, EXCLUDE max.
+ * comment: NOT range (min, max) or (min, max]
  */
 func (skiplist *skiplist) GetRangeByScore(min int64, max int64) (members []string) {
 	members = make([]string, 0)
@@ -278,7 +279,7 @@ func (skiplist *skiplist) GetRangeByScore(min int64, max int64) (members []strin
 	node := skiplist.header
 	for i := skiplist.level - 1; i >= 0; i-- {
 		for node.level[i].forward != nil {
-			if min < (node.level[i].forward.Score) { // already in range
+			if min <= (node.level[i].forward.Score) { // already in range
 				break
 			}
 			node = node.level[i].forward
@@ -290,7 +291,7 @@ func (skiplist *skiplist) GetRangeByScore(min int64, max int64) (members []strin
 
 	// collect member of nodes in range
 	for node != nil {
-		if max < (node.Score) { // already out of range
+		if max <= (node.Score) { // already out of range
 			break
 		}
 		member := node.Member
