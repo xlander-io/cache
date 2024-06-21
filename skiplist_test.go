@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func Test_Simple(t *testing.T) {
+func Test_SkipList_Simple(t *testing.T) {
 	sl := makeSkiplist()
 
 	sl.insert("A", 100)
@@ -145,7 +145,7 @@ func Test_Simple(t *testing.T) {
 
 }
 
-func Test_GetRangeByXXX(t *testing.T) {
+func Test_SkipList_GetRangeByXXX(t *testing.T) {
 
 	sl := makeSkiplist()
 

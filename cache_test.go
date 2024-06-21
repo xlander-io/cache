@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strconv"
 	"testing"
+	"time"
 )
 
 type Person struct {
@@ -23,32 +24,108 @@ func printMemStats() {
 	log.Printf("Alloc = %v KB, TotalAlloc = %v KB, Sys = %v KB,Lookups = %v NumGC = %v\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.Lookups, m.NumGC)
 }
 
-// func Test_Delete(t *testing.T) {
-// 	lc := New()
-// 	a := &Person{"Jack", 18, "London"}
-// 	lc.Set("a", a, 5)
-// 	lc.Set("b", a, 5)
+func Test_Cache_Simple(t *testing.T) {
 
-// 	v, ttl := lc.Get("a")
-// 	log.Println("get a")
-// 	log.Println(v, ttl)
+	cache, err := New(nil)
 
-// 	log.Println("delete a")
-// 	lc.Delete("a")
+	if nil != err {
+		t.Fatalf("New cache instance failed! err=%v", err)
+	}
 
-// 	v, ttl = lc.Get("a")
-// 	log.Println("get a")
-// 	log.Println(v, ttl)
+	jack := &Person{"Jack", 18, "London"}
+	cache.Set("a", jack, 5)
+	cache.Set("b", jack, 5)
 
-// 	v, ttl = lc.Get("b")
-// 	log.Println("get b")
-// 	log.Println(v, ttl)
+	if int32(2) != cache.TotalItems() {
+		t.Fatalf("cache's total items count should be 2, but %d", cache.TotalItems())
+	}
 
-// 	log.Println("origin a")
-// 	log.Println(*a)
+	{
+		v, ttl := cache.Get("a")
+		log.Println("get a")
+		log.Println(v, ttl)
 
-// 	time.Sleep(500 * time.Second)
-// }
+		if v != jack {
+			t.Fatalf("get 'a' from cache should be %v, but %v", jack, v)
+		}
+
+		if int64(5) != ttl {
+			t.Fatalf("the ttl of object which get from key 'a' should be 5, but %d", ttl)
+		}
+	}
+
+	log.Println("delete a")
+	cache.Delete("a")
+
+	if int32(1) != cache.TotalItems() {
+		t.Fatalf("count of cache's total items should be 1, but %d", cache.TotalItems())
+	}
+
+	{
+		v, ttl := cache.Get("a")
+		log.Println("get a")
+		log.Println(v, ttl)
+
+		if nil != v {
+			t.Fatalf("get 'a' from cache should be nil, but %v", v)
+		}
+
+		if int64(0) != ttl {
+			t.Fatalf("the ttl of object which is not exist should be 0, but %d", ttl)
+		}
+	}
+
+	{
+		v, ttl := cache.Get("b")
+		log.Println("get b")
+		log.Println(v, ttl)
+
+		if v != jack {
+			t.Fatalf("get 'a' from cache should be %v, but %v", jack, v)
+		}
+
+		if int64(5) != ttl {
+			t.Fatalf("the ttl of object which get from key 'b' should be 5, but %d", ttl)
+		}
+	}
+
+	log.Println("origin a")
+	log.Println(*jack)
+
+	log.Println("To simulate TTLs to timeout, waiting for 10 seconds ...")
+	time.Sleep(10 * time.Second) // wait timeout for all ttls
+
+	if int32(0) != cache.TotalItems() {
+		t.Fatalf("count of cache's total items should be 0 now, but %d", cache.TotalItems())
+	}
+
+	{
+		v, ttl := cache.Get("a")
+		log.Println("get a")
+		log.Println(v, ttl)
+
+		if nil != v {
+			t.Fatalf("get 'a' from cache should be nil, but %v", v)
+		}
+
+		if int64(0) != ttl {
+			t.Fatalf("the ttl of object which is not exist should be 0, but %d", ttl)
+		}
+	}
+	{
+		v, ttl := cache.Get("b")
+		log.Println("get b")
+		log.Println(v, ttl)
+
+		if nil != v {
+			t.Fatalf("get 'a' from cache should be nil, but %v", v)
+		}
+
+		if int64(0) != ttl {
+			t.Fatalf("the ttl of object which is not exist should be 0, but %d", ttl)
+		}
+	}
+}
 
 // func Test_Expire(t *testing.T) {
 // 	lc := New()
