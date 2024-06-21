@@ -75,7 +75,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 		//
 		if user_config.RecycleCheckIntervalSecs < 0 {
-			return nil, errors.New("config RecycleIntervalSecs error")
+			return nil, errors.New("config RecycleCheckIntervalSecs error")
 		} else if user_config.RecycleCheckIntervalSecs == 0 {
 			//bypass using default value
 		} else {
