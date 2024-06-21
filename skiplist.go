@@ -327,7 +327,6 @@ func (skiplist *skiplist) GetRangeByRank(start int64, stop int64) (members []str
 		next := node.level[0].forward
 		member := node.Member
 		members = append(members, member)
-		skiplist.removeNode(node, update)
 		node = next
 		i++
 	}

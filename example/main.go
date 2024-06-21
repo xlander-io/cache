@@ -26,10 +26,14 @@ func main() {
 	p1 := &Person{Name: "jack", Age: 12, Location: "x"}
 	//p2 := &Person{Name: "rose", Age: 12, Location: "xxasdfasdfadfxxasdfasdfadf"}
 
-	fmt.Println(local_cache.TotalItems())
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 50000; i++ {
 		local_cache.Set(strconv.Itoa(i), p1, 5)
 	}
+
+	for i := 50000; i < 100000; i++ {
+		local_cache.Set(strconv.Itoa(i), p1, 30)
+	}
+
 	fmt.Println(local_cache.TotalItems())
 
 	item, _ := local_cache.Get("jack")
@@ -43,6 +47,9 @@ func main() {
 
 	fmt.Println(local_cache.TotalItems())
 
+	//system.Sleep(15 * time.Second)
+	time.Sleep(15 * time.Second)
+	fmt.Println(local_cache.TotalItems())
 	//system.Sleep(15 * time.Second)
 	time.Sleep(15 * time.Second)
 	fmt.Println(local_cache.TotalItems())
