@@ -57,7 +57,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 	if user_config != nil {
 		//
 		if user_config.CacheBytesLimit < 0 {
-			return nil, errors.New("config CacheBytesLimit error")
+			return nil, errors.New("config CacheBytesLimit error, val < 0")
 		} else if user_config.CacheBytesLimit == 0 {
 			//bypass using default value
 		} else {
@@ -66,7 +66,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 		//
 		if user_config.MaxTtlSecs < 0 {
-			return nil, errors.New("config MaxTtlSecs error")
+			return nil, errors.New("config MaxTtlSecs error, val < 0")
 		} else if user_config.MaxTtlSecs == 0 {
 			//bypass using default value
 		} else {
@@ -75,7 +75,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 		//
 		if user_config.RecycleCheckIntervalSecs < 0 {
-			return nil, errors.New("config RecycleCheckIntervalSecs error")
+			return nil, errors.New("config RecycleCheckIntervalSecs error: val < 0")
 		} else if user_config.RecycleCheckIntervalSecs == 0 {
 			//bypass using default value
 		} else {
@@ -93,7 +93,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 		//
 		if user_config.RecycleBatchSize < 0 {
-			return nil, errors.New("config RecycleBatchSize error, val between [1,100]")
+			return nil, errors.New("config RecycleBatchSize error: val < 0")
 		} else if user_config.RecycleBatchSize == 0 {
 			//bypass using default value
 		} else {
@@ -102,7 +102,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 		//
 		if user_config.SkipListBufferSize < 0 {
-			return nil, errors.New("config SkipListBufferSize error")
+			return nil, errors.New("config SkipListBufferSize error: val < 0")
 		} else if user_config.SkipListBufferSize == 0 {
 			//bypass using default value
 		} else {
@@ -113,7 +113,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 
 	var config_recycle_bytes_threshold int64 = (cache_config.CacheBytesLimit * int64(cache_config.RecycleRatioThreshold) / 100)
 	if config_recycle_bytes_threshold < 1 {
-		return nil, errors.New("CacheBytesLimit*RecycleRatioThreshold must >= 1")
+		return nil, errors.New("CacheBytesLimit * RecycleRatioThreshold / 100 must >= 1")
 	}
 
 	cache := &Cache{
