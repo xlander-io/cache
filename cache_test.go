@@ -127,38 +127,270 @@ func Test_Cache_Simple(t *testing.T) {
 	}
 }
 
-// func Test_Expire(t *testing.T) {
-// 	lc := New()
-// 	lc.Set("1", "111", 5)
-// 	lc.Set("2", "111", 18)
-// 	lc.Set("3", "111", 23)
-// 	lc.Set("4", "111", -100)
-// 	lc.Set("5", "111", 3000000)
-// 	lc.Set("6", "111", 35)
+func Test_Cache_Expire(t *testing.T) {
+	cache, err := New(nil)
 
-// 	count := 0
-// 	for {
-// 		v, ttl := lc.Get("1")
-// 		log.Printf("1==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("2")
-// 		log.Printf("2==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("3")
-// 		log.Printf("3==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("4")
-// 		log.Printf("4==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("5")
-// 		log.Printf("5==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("6")
-// 		log.Printf("6==>%v %v", v, ttl)
-// 		log.Println("total key", lc.GetLen())
-// 		log.Println("-----------")
-// 		count++
-// 		if count > 40 {
-// 			return
-// 		}
-// 		time.Sleep(time.Second)
-// 	}
-// }
+	if nil != err {
+		t.Fatalf("New cache instance failed! err=%v", err)
+	}
+
+	jack := &Person{"Jack", 18, "London"}
+
+	cache.Set("1", jack, 5)
+	cache.Set("2", jack, 18)
+	cache.Set("3", jack, 23)
+	cache.Set("4", jack, -100)
+	cache.Set("5", jack, 3000000)
+	cache.Set("6", jack, 35)
+
+	if int32(5) != cache.TotalItems() {
+		t.Fatalf("count of cache's total items should be 5, but %d", cache.TotalItems())
+	}
+
+	count := 0
+	for {
+		v1, ttl1 := cache.Get("1")
+		log.Printf("1==>%v %v", v1, ttl1)
+		v2, ttl2 := cache.Get("2")
+		log.Printf("2==>%v %v", v2, ttl2)
+		v3, ttl3 := cache.Get("3")
+		log.Printf("3==>%v %v", v3, ttl3)
+		v4, ttl4 := cache.Get("4")
+		log.Printf("4==>%v %v", v4, ttl4)
+		v5, ttl5 := cache.Get("5")
+		log.Printf("5==>%v %v", v5, ttl5)
+		v6, ttl6 := cache.Get("6")
+		log.Printf("6==>%v %v", v6, ttl6)
+		log.Println("total key", cache.TotalItems())
+		log.Println("-----------")
+
+		if int(0) == count {
+			if int32(5) != cache.TotalItems() {
+				t.Fatalf("count of cache's total items should be 5, but %d", cache.TotalItems())
+			}
+
+			if v1 != jack {
+				t.Fatalf("get '1' from cache should be %v, but %v", jack, v1)
+			}
+			if v2 != jack {
+				t.Fatalf("get '2' from cache should be %v, but %v", jack, v2)
+			}
+			if v3 != jack {
+				t.Fatalf("get '3' from cache should be %v, but %v", jack, v3)
+			}
+			if v4 != nil {
+				t.Fatalf("get '4' from cache should be nil, but %v", v4)
+			}
+			if v5 != jack {
+				t.Fatalf("get '5' from cache should be %v, but %v", jack, v5)
+			}
+			if v6 != jack {
+				t.Fatalf("get '6' from cache should be %v, but %v", jack, v6)
+			}
+
+			if int64(5) != ttl1 {
+				t.Fatalf("the ttl of object which get from key '1' should be 5, but %d", ttl1)
+			}
+			if int64(18) != ttl2 {
+				t.Fatalf("the ttl of object which get from key '2' should be 18, but %d", ttl2)
+			}
+			if int64(23) != ttl3 {
+				t.Fatalf("the ttl of object which get from key '3' should be 23, but %d", ttl3)
+			}
+			if int64(0) != ttl4 {
+				t.Fatalf("the ttl of object which get from key '4' should be 0, but %d", ttl4)
+			}
+			if int64(7200) != ttl5 {
+				t.Fatalf("the ttl of object which get from key '5' should be 7200, but %d", ttl5)
+			}
+			if int64(35) != ttl6 {
+				t.Fatalf("the ttl of object which get from key '6' should be 35, but %d", ttl6)
+			}
+		}
+
+		if int(10) == count {
+			if int32(4) != cache.TotalItems() {
+				t.Fatalf("count of cache's total items should be 4, but %d", cache.TotalItems())
+			}
+
+			if v1 != nil {
+				t.Fatalf("get '1' from cache should be nil, but %v", v1)
+			}
+			if v2 != jack {
+				t.Fatalf("get '2' from cache should be %v, but %v", jack, v2)
+			}
+			if v3 != jack {
+				t.Fatalf("get '3' from cache should be %v, but %v", jack, v3)
+			}
+			if v4 != nil {
+				t.Fatalf("get '4' from cache should be nil, but %v", v4)
+			}
+			if v5 != jack {
+				t.Fatalf("get '5' from cache should be %v, but %v", jack, v5)
+			}
+			if v6 != jack {
+				t.Fatalf("get '6' from cache should be %v, but %v", jack, v6)
+			}
+
+			if int64(0) != ttl1 {
+				t.Fatalf("the ttl of object which get from key '1' should be 0, but %d", ttl1)
+			}
+			if int64(18-10) != ttl2 {
+				t.Fatalf("the ttl of object which get from key '2' should be 18-10, but %d", ttl2)
+			}
+			if int64(23-10) != ttl3 {
+				t.Fatalf("the ttl of object which get from key '3' should be 23-10, but %d", ttl3)
+			}
+			if int64(0) != ttl4 {
+				t.Fatalf("the ttl of object which get from key '4' should be 0, but %d", ttl4)
+			}
+			if int64(7200-10) != ttl5 {
+				t.Fatalf("the ttl of object which get from key '5' should be 7200-10, but %d", ttl5)
+			}
+			if int64(35-10) != ttl6 {
+				t.Fatalf("the ttl of object which get from key '6' should be 35-10, but %d", ttl6)
+			}
+		}
+
+		if int(20) == count {
+			if int32(3) != cache.TotalItems() {
+				t.Fatalf("count of cache's total items should be 3, but %d", cache.TotalItems())
+			}
+
+			if v1 != nil {
+				t.Fatalf("get '1' from cache should be nil, but %v", v1)
+			}
+			if v2 != nil {
+				t.Fatalf("get '2' from cache should be nil, but %v", v2)
+			}
+			if v3 != jack {
+				t.Fatalf("get '3' from cache should be %v, but %v", jack, v3)
+			}
+			if v4 != nil {
+				t.Fatalf("get '4' from cache should be nil, but %v", v4)
+			}
+			if v5 != jack {
+				t.Fatalf("get '5' from cache should be %v, but %v", jack, v5)
+			}
+			if v6 != jack {
+				t.Fatalf("get '6' from cache should be %v, but %v", jack, v6)
+			}
+
+			if int64(0) != ttl1 {
+				t.Fatalf("the ttl of object which get from key '1' should be 0, but %d", ttl1)
+			}
+			if int64(0) != ttl2 {
+				t.Fatalf("the ttl of object which get from key '2' should be 0, but %d", ttl2)
+			}
+			if int64(23-20) != ttl3 {
+				t.Fatalf("the ttl of object which get from key '3' should be 23-20, but %d", ttl3)
+			}
+			if int64(0) != ttl4 {
+				t.Fatalf("the ttl of object which get from key '4' should be 0, but %d", ttl4)
+			}
+			if int64(7200-20) != ttl5 {
+				t.Fatalf("the ttl of object which get from key '5' should be 7200-20, but %d", ttl5)
+			}
+			if int64(35-20) != ttl6 {
+				t.Fatalf("the ttl of object which get from key '6' should be 35-20, but %d", ttl6)
+			}
+		}
+
+		if int(30) == count {
+			if int32(2) != cache.TotalItems() {
+				t.Fatalf("count of cache's total items should be 2, but %d", cache.TotalItems())
+			}
+
+			if v1 != nil {
+				t.Fatalf("get '1' from cache should be nil, but %v", v1)
+			}
+			if v2 != nil {
+				t.Fatalf("get '2' from cache should be nil, but %v", v2)
+			}
+			if v3 != nil {
+				t.Fatalf("get '3' from cache should be nil, but %v", v3)
+			}
+			if v4 != nil {
+				t.Fatalf("get '4' from cache should be nil, but %v", v4)
+			}
+			if v5 != jack {
+				t.Fatalf("get '5' from cache should be %v, but %v", jack, v5)
+			}
+			if v6 != jack {
+				t.Fatalf("get '6' from cache should be %v, but %v", jack, v6)
+			}
+
+			if int64(0) != ttl1 {
+				t.Fatalf("the ttl of object which get from key '1' should be 0, but %d", ttl1)
+			}
+			if int64(0) != ttl2 {
+				t.Fatalf("the ttl of object which get from key '2' should be 0, but %d", ttl2)
+			}
+			if int64(0) != ttl3 {
+				t.Fatalf("the ttl of object which get from key '3' should be 0, but %d", ttl3)
+			}
+			if int64(0) != ttl4 {
+				t.Fatalf("the ttl of object which get from key '4' should be 0, but %d", ttl4)
+			}
+			if int64(7200-30) != ttl5 {
+				t.Fatalf("the ttl of object which get from key '5' should be 7200-30, but %d", ttl5)
+			}
+			if int64(35-30) != ttl6 {
+				t.Fatalf("the ttl of object which get from key '6' should be 35-30, but %d", ttl6)
+			}
+		}
+
+		if int(40) == count {
+			if int32(1) != cache.TotalItems() {
+				t.Fatalf("count of cache's total items should be 2, but %d", cache.TotalItems())
+			}
+
+			if v1 != nil {
+				t.Fatalf("get '1' from cache should be nil, but %v", v1)
+			}
+			if v2 != nil {
+				t.Fatalf("get '2' from cache should be nil, but %v", v2)
+			}
+			if v3 != nil {
+				t.Fatalf("get '3' from cache should be nil, but %v", v3)
+			}
+			if v4 != nil {
+				t.Fatalf("get '4' from cache should be nil, but %v", v4)
+			}
+			if v5 != jack {
+				t.Fatalf("get '5' from cache should be %v, but %v", jack, v5)
+			}
+			if v6 != nil {
+				t.Fatalf("get '6' from cache should be nil, but %v", v6)
+			}
+
+			if int64(0) != ttl1 {
+				t.Fatalf("the ttl of object which get from key '1' should be 0, but %d", ttl1)
+			}
+			if int64(0) != ttl2 {
+				t.Fatalf("the ttl of object which get from key '2' should be 0, but %d", ttl2)
+			}
+			if int64(0) != ttl3 {
+				t.Fatalf("the ttl of object which get from key '3' should be 0, but %d", ttl3)
+			}
+			if int64(0) != ttl4 {
+				t.Fatalf("the ttl of object which get from key '4' should be 0, but %d", ttl4)
+			}
+			if int64(7200-40) != ttl5 {
+				t.Fatalf("the ttl of object which get from key '5' should be 7200-40, but %d", ttl5)
+			}
+			if int64(0) != ttl6 {
+				t.Fatalf("the ttl of object which get from key '6' should be 0, but %d", ttl6)
+			}
+		}
+
+		count++
+		if count > 45 {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+}
 
 // func Test_SetAndRemove(t *testing.T) {
 // 	a := Person{"Jack", 18, "America"}
