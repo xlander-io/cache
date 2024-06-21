@@ -41,16 +41,16 @@ type Cache struct {
 }
 
 var cache_config = &CacheConfig{
-	CacheBytesLimit:          1024 * 1024 * 50, //50Mbytes
-	MaxTtlSecs:               7200,             //2 hours
-	RecycleCheckIntervalSecs: 5,                //5 secs for high efficiency
-	RecycleRatioThreshold:    80,               //80% usage will trigger recycling
-	RecycleBatchSize:         10000,            //10000 items recycled in a batch
-	SkipListBufferSize:       20000,
-	DefaultTtlSecs:           30, //default cache item duration is 30 secs
-
+	CacheBytesLimit:          1024 * 1024 * 50, // 50M bytes
+	MaxTtlSecs:               7200,             // 2 hours
+	RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
+	RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
+	RecycleBatchSize:         10000,            // 10000 items recycled in a batch
+	SkipListBufferSize:       20000,            // 20000 commands for chan buffer between internal map and skiplist
+	DefaultTtlSecs:           30,               // default cache item duration is 30 secs
 }
 
+// if passed user_config is nil, then use the default cache_config.
 func New(user_config *CacheConfig) (*Cache, error) {
 
 	//new a cache with default config
@@ -134,7 +134,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 	}()
 
-	//todo write docs
+	// routine for processing commands which transfered from sl_channel for skiplist
 	go func() {
 		for {
 			f := <-cache.sl_channel
@@ -145,13 +145,13 @@ func New(user_config *CacheConfig) (*Cache, error) {
 	//start the recycle go routine
 	safeInfiLoop(func() {
 
-		//remove expired keys
+		// remove expired keys
 		keys := cache.skip_list.GetRangeByScore(0, cache.now_unixtime)
 		for _, key := range keys {
 			cache.Delete(key)
 		}
 
-		//check overlimit
+		// check overlimit
 		for int64(cache.TotalBytes()) >= cache.recycle_bytes_threshold {
 			keys := cache.skip_list.GetRangeByRank(0, int64(cache.cache_config.RecycleBatchSize))
 			for _, key := range keys {
