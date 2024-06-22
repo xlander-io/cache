@@ -2,8 +2,10 @@ package cache
 
 import (
 	"log"
+	"math/rand"
 	"runtime"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -22,6 +24,34 @@ func printMemStats() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	log.Printf("Alloc = %v KB, TotalAlloc = %v KB, Sys = %v KB,Lookups = %v NumGC = %v\n", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.Lookups, m.NumGC)
+}
+
+func Min(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Max(x, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func Clamp(x, min, max int64) int64 {
+	return Min(Max(x, min), max)
+}
+
+func EqualWithEps(a, b, eps int64) bool {
+	c := a - b
+	if c > 0 {
+		return c <= +eps
+	} else if c < 0 {
+		return c >= -eps
+	}
+	return true
 }
 
 func Test_Cache_Simple(t *testing.T) {
@@ -428,163 +458,265 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 	printMemStats()
 }
 
-// func Test_Cache_BigAmountKey(t *testing.T) {
-// 	jack := &Person{"Jack", 18, "America"}
-// 	cache, err := New(nil)
+func Test_Cache_BigAmountKey(t *testing.T) {
+	jack := &Person{"Jack", 18, "America"}
+	cache, err := New(nil)
 
-// 	if nil != err {
-// 		t.Fatalf("New cache instance failed! err=%v", err)
-// 	}
+	if nil != err {
+		t.Fatalf("New cache instance failed! err=%v", err)
+	}
 
-// 	log.Println("start")
-// 	printMemStats()
+	log.Println("start")
+	printMemStats()
 
-// 	// go func() {
-// 	// 	log.Println(http.ListenAndServe("0.0.0.0:10000", nil))
-// 	// }()
+	// go func() {
+	// 	log.Println(http.ListenAndServe("0.0.0.0:10000", nil))
+	// }()
 
-// 	for i := 0; i < 30; i++ {
-// 		log.Println("----------")
-// 		log.Println("round", i)
-// 		log.Println("mem start set")
-// 		printMemStats()
+	for i := 0; i < 30; i++ {
+		log.Println("----------")
+		log.Println("round", i)
+		log.Println("mem start set")
+		printMemStats()
 
-// 		for i := 0; i < 1000000; i++ {
-// 			cache.Set(strconv.Itoa(i), jack, int64(rand.Intn(10)+1))
-// 		}
-// 		log.Println("mem after set")
-// 		printMemStats()
-// 		time.Sleep(time.Second)
-// 	}
+		for i := 0; i < 100*10000; i++ {
+			cache.Set(strconv.Itoa(i), jack, int64(rand.Intn(10)+1000))
+		}
 
-// 	log.Println("~~~~~~")
-// 	log.Println("finish set")
-// 	printMemStats()
+		//time.Sleep(2 * time.Second) // waiting for skiplist to update ttl
 
-// 	log.Println("do GC")
+		if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
+			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+		}
 
-// 	runtime.GC()
-// 	log.Println("after GC")
-// 	printMemStats()
+		if int32(100*10000) != cache.TotalItems() {
+			t.Fatalf("expect total items: 100*10000, but %d", cache.TotalItems())
+		}
 
-// 	count := 0
-// 	for {
-// 		time.Sleep(1 * time.Second)
-// 		log.Println("---job finished---")
-// 		printMemStats()
-// 		count++
-// 		if count > 45 {
-// 			//return
-// 		}
-// 	}
-// 	//time.Sleep(1*time.Hour)
-// }
+		if 100*10000*jack.CacheBytes() != int(cache.TotalBytes()) {
+			t.Fatalf("expect total bytes: 100*10000*%d, but %d", jack.CacheBytes(), cache.TotalBytes())
+		}
 
-// func Test_RandSet(t *testing.T) {
-// 	lc, _ := New(nil)
-// 	a := Person{"Jack", 18, "America"}
+		log.Println("mem after set")
+		log.Printf("unix time now: %d\n", time.Now().Unix())
+		printMemStats()
+		time.Sleep(time.Second)
+	}
 
-// 	lc.Set("a", a, 15)
-// 	lc.Set("b", a, 19)
-// 	lc.Set("c", a, 60)
-// 	lc.Set("d", a, 63)
-// 	lc.Set("e", a, 65)
+	log.Println("~~~~~~")
+	log.Println("finish set")
+	printMemStats()
 
-// 	log.Println("before big amount set")
-// 	v, ttl := lc.Get("a")
-// 	log.Printf("a==>%v %v", v, ttl)
-// 	v, ttl = lc.Get("b")
-// 	log.Printf("b==>%v %v", v, ttl)
-// 	v, ttl = lc.Get("c")
-// 	log.Printf("c==>%v %v", v, ttl)
-// 	v, ttl = lc.Get("d")
-// 	log.Printf("d==>%v %v", v, ttl)
-// 	v, ttl = lc.Get("e")
-// 	log.Printf("e==>%v %v", v, ttl)
+	log.Println("do GC")
 
-// 	log.Println("start amount set")
-// 	for i := 0; i < 200; i++ {
-// 		for j := 0; j < 10000; j++ {
-// 			num := rand.Intn(9999999999999)
-// 			key := strconv.Itoa(num)
-// 			lc.Set(key, a, int64(rand.Intn(30)+20))
-// 		}
-// 	}
+	runtime.GC()
+	log.Println("after GC")
+	printMemStats()
 
-// 	for i := 0; i < 70; i++ {
-// 		time.Sleep(time.Second)
-// 		log.Println("--------------")
-// 		v, ttl = lc.Get("a")
-// 		log.Printf("a==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("b")
-// 		log.Printf("b==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("c")
-// 		log.Printf("c==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("d")
-// 		log.Printf("d==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("e")
-// 		log.Printf("e==>%v %v", v, ttl)
-// 		log.Println("total key", lc.GetLen())
-// 	}
-// }
+	count := 0
+	for {
+		time.Sleep(1 * time.Second)
+		log.Println("---job finished---")
+		printMemStats()
+		count++
+		if count > 45 {
+			return
+		}
+	}
+	//time.Sleep(1*time.Hour)
+}
 
-// func Test_KeepTTL(t *testing.T) {
-// 	lc := New()
-// 	a := Person{"Ma Yun", 58, "China"}
-// 	b := Person{"Jack Ma", 18, "America"}
+func Test_Cache_RandomSet(t *testing.T) {
+	cache, _ := New(nil)
+	jack := &Person{"Jack", 18, "America"}
 
-// 	lc.Set("a", a, 30)
-// 	lc.Set("b", a, 40)
-// 	lc.Set("c", a, 50)
+	cache.Set("a", jack, 15)
+	cache.Set("b", jack, 19)
+	cache.Set("c", jack, 60)
+	cache.Set("d", jack, 63)
+	cache.Set("e", jack, 65)
 
-// 	//log
-// 	v, ttl := lc.Get("a")
-// 	log.Printf("a==>%v %v", v, ttl)
-// 	v, ttl = lc.Get("b")
-// 	log.Printf("b==>%v %v", v, ttl)
-// 	v, ttl = lc.Get("c")
-// 	log.Printf("c==>%v %v", v, ttl)
+	log.Println("before big amount set")
+	v, ttl := cache.Get("a")
+	log.Printf("a==>%v %v", v, ttl)
+	v, ttl = cache.Get("b")
+	log.Printf("b==>%v %v", v, ttl)
+	v, ttl = cache.Get("c")
+	log.Printf("c==>%v %v", v, ttl)
+	v, ttl = cache.Get("d")
+	log.Printf("d==>%v %v", v, ttl)
+	v, ttl = cache.Get("e")
+	log.Printf("e==>%v %v", v, ttl)
 
-// 	time.Sleep(5 * time.Second)
+	log.Println("start amount set")
+	for i := 0; i < 200; i++ {
+		for j := 0; j < 10000; j++ {
+			num := rand.Intn(9999999999999)
+			key := strconv.Itoa(num)
+			cache.Set(key, jack, int64(rand.Intn(30)+20))
+		}
 
-// 	lc.Set("a", b, 300)
-// 	lc.Set("b", b, 0)
+		if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
+			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+		}
+	}
 
-// 	//log
-// 	for i := 0; i < 10; i++ {
-// 		log.Println("-----------")
-// 		v, ttl = lc.Get("a")
-// 		log.Printf("a==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("b")
-// 		log.Printf("b==>%v %v", v, ttl)
-// 		v, ttl = lc.Get("c")
-// 		log.Printf("c==>%v %v", v, ttl)
-// 		time.Sleep(time.Second)
-// 	}
+	if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
+		t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+	}
 
-// }
+	for i := 0; i < 70; i++ {
+		time.Sleep(time.Second)
+		log.Println("--------------")
+		v, ttl = cache.Get("a")
+		log.Printf("a==>%v %v", v, ttl)
+		v, ttl = cache.Get("b")
+		log.Printf("b==>%v %v", v, ttl)
+		v, ttl = cache.Get("c")
+		log.Printf("c==>%v %v", v, ttl)
+		v, ttl = cache.Get("d")
+		log.Printf("d==>%v %v", v, ttl)
+		v, ttl = cache.Get("e")
+		log.Printf("e==>%v %v", v, ttl)
+		log.Println("total key", cache.TotalItems())
 
-// func Test_SetTTL(t *testing.T) {
-// 	lc := New()
-// 	a := Person{"Ma Yun", 58, "China"}
+		if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
+			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+		}
+	}
+}
 
-// 	ttls := []int64{1, 20000, 0, -100, 200, 45, 346547457457457, -20000, 434, 9}
-// 	for i := 0; i < 10; i++ {
-// 		key := strconv.Itoa(i)
-// 		lc.Set(key, a, ttls[i])
-// 	}
+func Test_Cache_KeepTTL(t *testing.T) {
+	cache, _ := New(nil)
+	mayun := &Person{"Ma Yun", 58, "China"}
+	jack := &Person{"Jack Ma", 18, "America"}
 
-// 	for i := 0; i < 10; i++ {
-// 		log.Println("-----------")
-// 		for j := 0; j < 10; j++ {
-// 			key := strconv.Itoa(j)
-// 			v, ttl := lc.Get(key)
-// 			log.Printf("%s==>%v %v", key, v, ttl)
-// 		}
-// 		log.Println("total key", lc.GetLen())
-// 		time.Sleep(time.Second)
-// 	}
-// }
+	cache.Set("a", mayun, 30)
+	cache.Set("b", mayun, 40)
+	cache.Set("c", mayun, 50)
+
+	//log
+	{
+		v, ttl := cache.Get("a")
+		log.Printf("a==>%v %v", v, ttl)
+
+		if v != mayun {
+			t.Fatalf("item of key 'a' expect %v, but %v", mayun, v)
+		}
+		if ttl != 30 {
+			t.Fatalf("ttl of key 'a' expect %d, but %d", 30, ttl)
+		}
+	}
+
+	{
+		v, ttl := cache.Get("b")
+		log.Printf("b==>%v %v", v, ttl)
+
+		if v != mayun {
+			t.Fatalf("item of key 'b' expect %v, but %v", mayun, v)
+		}
+		if ttl != 40 {
+			t.Fatalf("ttl of key 'b' expect %d, but %d", 40, ttl)
+		}
+	}
+
+	{
+		v, ttl := cache.Get("c")
+		log.Printf("c==>%v %v", v, ttl)
+
+		if v != mayun {
+			t.Fatalf("item of key 'c' expect %v, but %v", mayun, v)
+		}
+		if ttl != 50 {
+			t.Fatalf("ttl of key 'c' expect %d, but %d", 50, ttl)
+		}
+	}
+
+	time.Sleep(5 * time.Second)
+
+	cache.Set("a", jack, 300) // update ttl to 300 for key 'a'
+	cache.Set("b", jack, 0)   // do nothing
+
+	{
+		v, ttl := cache.Get("a")
+		log.Printf("a==>%v %v", v, ttl)
+
+		if v != jack {
+			t.Fatalf("item of key 'a' expect %v, but %v", jack, v)
+		}
+		if ttl != 300 {
+			t.Fatalf("ttl of key 'a' expect %d, but %d", 300, ttl)
+		}
+	}
+
+	{
+		v, ttl := cache.Get("b")
+		log.Printf("b==>%v %v", v, ttl)
+
+		if v != jack {
+			t.Fatalf("item of key 'b' expect %v, but %v", jack, v)
+		}
+		if !EqualWithEps(40-5, ttl, 1) {
+			t.Fatalf("ttl of key 'b' expect %d-5, but %d", 40, ttl)
+		}
+	}
+
+	{
+		v, ttl := cache.Get("c")
+		log.Printf("c==>%v %v", v, ttl)
+
+		if v != mayun {
+			t.Fatalf("item of key 'c' expect %v, but %v", mayun, v)
+		}
+		if !EqualWithEps(50-5, ttl, 1) {
+			t.Fatalf("ttl of key 'c' expect %d-5, but %d", 50, ttl)
+		}
+	}
+
+	//log
+	for i := 0; i < 10; i++ {
+		log.Println("-----------")
+		v, ttl := cache.Get("a")
+		log.Printf("a==>%v %v", v, ttl)
+		v, ttl = cache.Get("b")
+		log.Printf("b==>%v %v", v, ttl)
+		v, ttl = cache.Get("c")
+		log.Printf("c==>%v %v", v, ttl)
+		time.Sleep(time.Second)
+	}
+
+}
+
+func Test_Cache_SetTTL(t *testing.T) {
+	cache, _ := New(nil)
+	mayun := &Person{"Ma Yun", 58, "China"}
+
+	TTLs := []int64{1, 20000, 0, -100, 200, 45, 346547457457457, -20000, 434, 9}
+	for i := 0; i < 10; i++ {
+		key := strconv.Itoa(i)
+		cache.Set(key, mayun, TTLs[i])
+	}
+
+	for i := 0; i < 10; i++ {
+		log.Println("-----------")
+		for j := 0; j < 10; j++ {
+			key := strconv.Itoa(j)
+			v, ttl := cache.Get(key)
+			log.Printf("%s==>%v %v", key, v, ttl)
+
+			// if v != mayun {
+			// 	t.Fatalf("expect %v, but %v", mayun, v)
+			// }
+
+			TTL := Max(Clamp(TTLs[j], 0, 7200)-int64(i), 0)
+			if !EqualWithEps(TTL, ttl, 1) {
+				t.Fatalf("input %d, expect %d, but %v", TTLs[j], TTL, ttl)
+			}
+		}
+		log.Println("total key", cache.TotalItems())
+		time.Sleep(time.Second)
+	}
+}
 
 // func Test_SyncMap(t *testing.T) {
 // 	printMemStats()
@@ -630,8 +762,8 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 // }
 
 func BenchmarkLocalReference_SetPointer(b *testing.B) {
-	lc, _ := New(nil)
-	a := &Person{"Jack", 18, "America"}
+	cache, _ := New(nil)
+	jack := &Person{"Jack", 18, "America"}
 
 	keyArray := []string{}
 	for i := 0; i < b.N; i++ {
@@ -641,62 +773,62 @@ func BenchmarkLocalReference_SetPointer(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		lc.Set(keyArray[i], a, 300)
+		cache.Set(keyArray[i], jack, 300)
 	}
 }
 
 func BenchmarkLocalReference_GetPointer(b *testing.B) {
-	lc, _ := New(nil)
-	a := &Person{"Jack", 18, "America"}
-	lc.Set("1", a, 300)
+	cache, _ := New(nil)
+	jack := &Person{"Jack", 18, "America"}
+	cache.Set("1", jack, 300)
 	var e *Person
 	log.Println(e)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		it, _ := lc.Get("1")
+		it, _ := cache.Get("1")
 		e = it.(*Person)
 	}
 }
 
-// func Benchmark_syncMap(b *testing.B) {
-// 	var m sync.Map
-// 	a := &Person{"Jack", 18, "America"}
-// 	for i := 0; i < 100; i++ {
-// 		m.Store(i, a)
-// 	}
+func Benchmark_syncMap(b *testing.B) {
+	var m sync.Map
+	jack1 := &Person{"Jack", 18, "America"}
+	for i := 0; i < 100; i++ {
+		m.Store(i, jack1)
+	}
 
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		p, _ := m.Load(1)
-// 		b := &Person{"Jack", 18, "America"}
-// 		m.Store(i, b)
-// 		_ = p.(*Person)
-// 	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p, _ := m.Load(1)
+		jack2 := &Person{"Jack", 18, "America"}
+		m.Store(i, jack2)
+		_ = p.(*Person)
+	}
 
-// }
+}
 
-// func Benchmark_map(b *testing.B) {
-// 	m := map[int]int{}
-// 	for i := 0; i < 100; i++ {
-// 		m[i] = i
-// 	}
+func Benchmark_map(b *testing.B) {
+	m := map[int]int{}
+	for i := 0; i < 100; i++ {
+		m[i] = i
+	}
 
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		_ = m[i]
-// 	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = m[i]
+	}
 
-// }
+}
 
-// func Benchmark_time(b *testing.B) {
+func Benchmark_time(b *testing.B) {
 
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		time.Now().Unix()
-// 	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		time.Now().Unix()
+	}
 
-// }
+}
