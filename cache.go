@@ -50,6 +50,12 @@ var cache_config = &CacheConfig{
 	DefaultTtlSecs:           30,               // default cache item duration is 30 secs
 }
 
+// In go, primitive types, and structs containing only primitive types, are copied by value,
+// so you can copy them by simply assigning to a new variable (or returning from a function).
+func DupDefaultConfig() CacheConfig {
+	return *cache_config
+}
+
 // if passed user_config is nil, then use the default cache_config.
 func New(user_config *CacheConfig) (*Cache, error) {
 
