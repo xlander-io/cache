@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 )
 
 type Person struct {
@@ -17,7 +18,7 @@ type Person struct {
 }
 
 func (p *Person) CacheBytes() int {
-	return 100
+	return int(unsafe.Sizeof(*p))
 }
 
 func printMemStats() {
@@ -66,8 +67,8 @@ func Test_Cache_Simple(t *testing.T) {
 	cache.Set("a", jack, 5)
 	cache.Set("b", jack, 5)
 
-	if int32(2) != cache.TotalItems() {
-		t.Fatalf("cache's total items count should be 2, but %d", cache.TotalItems())
+	if int32(2) != cache.Items() {
+		t.Fatalf("cache's total items count should be 2, but %d", cache.Items())
 	}
 
 	{
@@ -87,8 +88,8 @@ func Test_Cache_Simple(t *testing.T) {
 	log.Println("delete a")
 	cache.Delete("a")
 
-	if int32(1) != cache.TotalItems() {
-		t.Fatalf("count of cache's total items should be 1, but %d", cache.TotalItems())
+	if int32(1) != cache.Items() {
+		t.Fatalf("count of cache's total items should be 1, but %d", cache.Items())
 	}
 
 	{
@@ -125,8 +126,8 @@ func Test_Cache_Simple(t *testing.T) {
 	log.Println("To simulate TTLs to timeout, waiting for 10 seconds ...")
 	time.Sleep(10 * time.Second) // wait timeout for all ttls
 
-	if int32(0) != cache.TotalItems() {
-		t.Fatalf("count of cache's total items should be 0 now, but %d", cache.TotalItems())
+	if int32(0) != cache.Items() {
+		t.Fatalf("count of cache's total items should be 0 now, but %d", cache.Items())
 	}
 
 	{
@@ -173,8 +174,8 @@ func Test_Cache_Expire(t *testing.T) {
 	cache.Set("5", jack, 3000000)
 	cache.Set("6", jack, 35)
 
-	if int32(5) != cache.TotalItems() {
-		t.Fatalf("count of cache's total items should be 5, but %d", cache.TotalItems())
+	if int32(5) != cache.Items() {
+		t.Fatalf("count of cache's total items should be 5, but %d", cache.Items())
 	}
 
 	count := 0
@@ -191,12 +192,12 @@ func Test_Cache_Expire(t *testing.T) {
 		log.Printf("5==>%v %v", v5, ttl5)
 		v6, ttl6 := cache.Get("6")
 		log.Printf("6==>%v %v", v6, ttl6)
-		log.Println("total key", cache.TotalItems())
+		log.Println("total key", cache.Items())
 		log.Println("-----------")
 
 		if int(0) == count {
-			if int32(5) != cache.TotalItems() {
-				t.Fatalf("count of cache's total items should be 5, but %d", cache.TotalItems())
+			if int32(5) != cache.Items() {
+				t.Fatalf("count of cache's total items should be 5, but %d", cache.Items())
 			}
 
 			if v1 != jack {
@@ -239,8 +240,8 @@ func Test_Cache_Expire(t *testing.T) {
 		}
 
 		if int(10) == count {
-			if int32(4) != cache.TotalItems() {
-				t.Fatalf("count of cache's total items should be 4, but %d", cache.TotalItems())
+			if int32(4) != cache.Items() {
+				t.Fatalf("count of cache's total items should be 4, but %d", cache.Items())
 			}
 
 			if v1 != nil {
@@ -283,8 +284,8 @@ func Test_Cache_Expire(t *testing.T) {
 		}
 
 		if int(20) == count {
-			if int32(3) != cache.TotalItems() {
-				t.Fatalf("count of cache's total items should be 3, but %d", cache.TotalItems())
+			if int32(3) != cache.Items() {
+				t.Fatalf("count of cache's total items should be 3, but %d", cache.Items())
 			}
 
 			if v1 != nil {
@@ -327,8 +328,8 @@ func Test_Cache_Expire(t *testing.T) {
 		}
 
 		if int(30) == count {
-			if int32(2) != cache.TotalItems() {
-				t.Fatalf("count of cache's total items should be 2, but %d", cache.TotalItems())
+			if int32(2) != cache.Items() {
+				t.Fatalf("count of cache's total items should be 2, but %d", cache.Items())
 			}
 
 			if v1 != nil {
@@ -371,8 +372,8 @@ func Test_Cache_Expire(t *testing.T) {
 		}
 
 		if int(40) == count {
-			if int32(1) != cache.TotalItems() {
-				t.Fatalf("count of cache's total items should be 2, but %d", cache.TotalItems())
+			if int32(1) != cache.Items() {
+				t.Fatalf("count of cache's total items should be 2, but %d", cache.Items())
 			}
 
 			if v1 != nil {
@@ -439,12 +440,12 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 			cache.Set(strconv.Itoa(j), jack, 1)
 		}
 
-		if int32(10000) != cache.TotalItems() {
-			t.Fatalf("count of cache's total items should be 10000, but %d", cache.TotalItems())
+		if int32(10000) != cache.Items() {
+			t.Fatalf("count of cache's total items should be 10000, but %d", cache.Items())
 		}
 
-		if int32(10000*jack.CacheBytes()) != cache.TotalBytes() {
-			t.Fatalf("count of cache's total items should be 10000*%d, but %d", jack.CacheBytes(), cache.TotalItems())
+		if int32(10000*jack.CacheBytes()) != cache.Bytes() {
+			t.Fatalf("count of cache's total items should be 10000*%d, but %d", jack.CacheBytes(), cache.Items())
 		}
 
 		log.Println("round:", i)
@@ -458,6 +459,29 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 	printMemStats()
 }
 
+func Test_Cache_FastRecycling(t *testing.T) {
+	jack := &Person{"Jack", 18, "America"}
+
+	config := DupDefaultConfig()
+	config.CacheBytesLimit = 1000 * 10000 * 40
+
+	cache, err := New(&config)
+
+	if nil != err {
+		t.Fatalf("New cache instance failed! err=%v", err)
+	}
+
+	for j := 0; j < 1000*10000; j++ {
+		cache.Set(strconv.Itoa(j), jack, int64(60))
+	}
+
+	for i := 0; i < 50; i++ {
+		log.Println("total items:", cache.Items())
+		log.Println("total bytes:", cache.Bytes())
+		time.Sleep(1 * time.Second)
+	}
+
+}
 func Test_Cache_BigAmountKey(t *testing.T) {
 	jack := &Person{"Jack", 18, "America"}
 	config := DupDefaultConfig()
@@ -488,16 +512,16 @@ func Test_Cache_BigAmountKey(t *testing.T) {
 
 		//time.Sleep(2 * time.Second) // waiting for skiplist to update ttl
 
-		if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
-			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+		if cache.Items()*int32(jack.CacheBytes()) != cache.Bytes() {
+			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.Items(), cache.Bytes())
 		}
 
-		if int32(100*10000) != cache.TotalItems() {
-			t.Fatalf("expect total items: 100*10000, but %d", cache.TotalItems())
+		if int32(100*10000) != cache.Items() {
+			t.Fatalf("expect total items: 100*10000, but %d", cache.Items())
 		}
 
-		if 100*10000*jack.CacheBytes() != int(cache.TotalBytes()) {
-			t.Fatalf("expect total bytes: 100*10000*%d, but %d", jack.CacheBytes(), cache.TotalBytes())
+		if 100*10000*jack.CacheBytes() != int(cache.Bytes()) {
+			t.Fatalf("expect total bytes: 100*10000*%d, but %d", jack.CacheBytes(), cache.Bytes())
 		}
 
 		log.Println("mem after set")
@@ -559,13 +583,13 @@ func Test_Cache_RandomSet(t *testing.T) {
 			cache.Set(key, jack, int64(rand.Intn(30)+20))
 		}
 
-		if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
-			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+		if cache.Items()*int32(jack.CacheBytes()) != cache.Bytes() {
+			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.Items(), cache.Bytes())
 		}
 	}
 
-	if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
-		t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+	if cache.Items()*int32(jack.CacheBytes()) != cache.Bytes() {
+		t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.Items(), cache.Bytes())
 	}
 
 	for i := 0; i < 70; i++ {
@@ -581,10 +605,10 @@ func Test_Cache_RandomSet(t *testing.T) {
 		log.Printf("d==>%v %v", v, ttl)
 		v, ttl = cache.Get("e")
 		log.Printf("e==>%v %v", v, ttl)
-		log.Println("total key", cache.TotalItems())
+		log.Println("total key", cache.Items())
 
-		if cache.TotalItems()*int32(jack.CacheBytes()) != cache.TotalBytes() {
-			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.TotalItems(), cache.TotalBytes())
+		if cache.Items()*int32(jack.CacheBytes()) != cache.Bytes() {
+			t.Fatalf("total bytes expect %d*%d, but %d", jack.CacheBytes(), cache.Items(), cache.Bytes())
 		}
 	}
 }
@@ -716,7 +740,7 @@ func Test_Cache_SetTTL(t *testing.T) {
 				t.Fatalf("input %d, expect %d, but %v", TTLs[j], TTL, ttl)
 			}
 		}
-		log.Println("total key", cache.TotalItems())
+		log.Println("total key", cache.Items())
 		time.Sleep(time.Second)
 	}
 }

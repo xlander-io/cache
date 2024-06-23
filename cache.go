@@ -22,7 +22,6 @@ type CacheConfig struct {
 	RecycleRatioThreshold    int   // 1-100, old items are recycled once cache reach limit, e.g: 30 for 30% percentage
 	RecycleBatchSize         int   // number of items to be recycled in a batch
 	SkipListBufferSize       int   // chan buffer between internal map and skiplist
-	DefaultTtlSecs           int64 // default cache item duration in secs
 }
 
 type Cache struct {
@@ -45,9 +44,8 @@ var cache_config = &CacheConfig{
 	MaxTtlSecs:               7200,             // 2 hours
 	RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
 	RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
-	RecycleBatchSize:         10000,            // 10000 items recycled in a batch
+	RecycleBatchSize:         100,              // 100 items recycled in a batch
 	SkipListBufferSize:       20000,            // 20000 commands for chan buffer between internal map and skiplist
-	DefaultTtlSecs:           30,               // default cache item duration is 30 secs
 }
 
 // In go, primitive types, and structs containing only primitive types, are copied by value,
@@ -158,7 +156,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 		}
 
 		// check overlimit
-		for int64(cache.TotalBytes()) >= cache.recycle_bytes_threshold {
+		for int64(cache.Bytes()) >= cache.recycle_bytes_threshold {
 			keys := cache.skip_list.GetRangeByRank(0, int64(cache.cache_config.RecycleBatchSize))
 			for _, key := range keys {
 				cache.Delete(key)
@@ -282,11 +280,11 @@ func (cache *Cache) Delete(key string) {
 	}
 }
 
-func (cache *Cache) TotalItems() int32 {
+func (cache *Cache) Items() int32 {
 	return cache.element_count
 }
 
-func (cache *Cache) TotalBytes() int32 {
+func (cache *Cache) Bytes() int32 {
 	return int32(cache.element_bytes)
 }
 

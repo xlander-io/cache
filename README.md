@@ -59,9 +59,8 @@ var cache_config = &CacheConfig{
 	MaxTtlSecs:               7200,             // 2 hours
 	RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
 	RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
-	RecycleBatchSize:         10000,            // 10000 items recycled in a batch
+	RecycleBatchSize:         100,              // 100 items recycled in a batch
 	SkipListBufferSize:       20000,            // 20000 commands for chan buffer between internal map and skiplist
-	DefaultTtlSecs:           30,               // default cache item duration is 30 secs
 }
 ```
 
