@@ -479,8 +479,8 @@ func Test_Cache_BigAmountKey(t *testing.T) {
 		log.Println("mem start set")
 		printMemStats()
 
-		for i := 0; i < 100*10000; i++ {
-			cache.Set(strconv.Itoa(i), jack, int64(rand.Intn(10)+1000))
+		for j := 0; j < 100*10000; j++ {
+			cache.Set(strconv.Itoa(j), jack, int64(rand.Intn(10)+1000))
 		}
 
 		//time.Sleep(2 * time.Second) // waiting for skiplist to update ttl
