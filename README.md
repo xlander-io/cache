@@ -43,7 +43,7 @@ func (p *Person) CacheBytes() int {
 
 func main() {
 	local_cache, _ := cache.New(nil)                                                 //nil for default config
-	local_cache.Set("key", &Person{Name: "testname", Age: 1, Location: "world"}, 10) //0 for default ttl
+	local_cache.Set("key", &Person{Name: "testname", Age: 1, Location: "world"}, 10) 
 	item, _ := local_cache.Get("key")
 	fmt.Println(item.(*Person))
 	fmt.Println(item.CacheBytes())
