@@ -9,7 +9,7 @@
 ## Description
 ```
 Cache is a reference system, not a typical cache, 
-as values must be of a reference type that implements the CacheItem interface.
+as values must be of a pointer type that implements the CacheItem interface.
 No deep copy occurs during the set process.
 
 deep copy won't happen in set process
