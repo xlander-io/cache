@@ -191,23 +191,27 @@ func (cache *Cache) Get(key string) (value CacheItem, ttl int64) {
 	}
 }
 
-// todo write docs
+// for ttlSecond < 0 not allowed
+// for ttlSecond == 0
+// -----1. keep the ttl of previous val if previous value exist
+// -----2. nothing will be set if previous value not exist
+// for ttlSecond > MaxTtlSecs, ttl will be adjusted to MaxTtlSecs
 func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
-
-	cache.lock.Lock()
-	defer cache.lock.Unlock()
 
 	if value == nil {
 		return errors.New("value can not be nil")
 	}
 
 	if ttlSecond < 0 {
-		return errors.New("ttl <0 error")
+		return errors.New("ttl < 0 error")
 	}
 
 	if ttlSecond > cache.cache_config.MaxTtlSecs {
 		ttlSecond = cache.cache_config.MaxTtlSecs
 	}
+
+	cache.lock.Lock()
+	defer cache.lock.Unlock()
 
 	//default expire time
 	expire_time := cache.now_unixtime + ttlSecond
@@ -217,6 +221,11 @@ func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
 	prev_ele_, pre_ele_exist_ := cache.sync_map.Load(key)
 	if pre_ele_exist_ {
 		pre_ele = prev_ele_.(*cache_element)
+	}
+
+	//not meaningful
+	if !pre_ele_exist_ && ttlSecond == 0 {
+		return nil
 	}
 
 	//keep old ttl

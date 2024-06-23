@@ -21,29 +21,14 @@ value type can only be pointer type with implementation of interface `CacheItem`
 ## usage
 
 ```go
-//import
-import (
-    "github.com/xlander-io/cache"
-)
-```
-
-### example
-
-```go
 package main
 
 import (
-	"log"
-	"time"
+	"fmt"
+	"unsafe"
 
 	"github.com/xlander-io/cache"
 )
-
-/***************************
-type CacheItem interface {
-	CacheBytes() int
-}
-***************************/
 
 type Person struct {
 	Name     string
@@ -51,56 +36,18 @@ type Person struct {
 	Location string
 }
 
-// Only support reference type which implement interface CacheItem
+// only support pointer type with CacheBytes interface support
 func (p *Person) CacheBytes() int {
-	return 100
+	return int(unsafe.Sizeof(*p))
 }
 
 func main() {
-
-	// modify duplication of the default config is convenient
-	config := cache.DupDefaultConfig()
-	config.CacheBytesLimit = 1024 * 1024 * 50 * 4
-
-	local_cache := cache.New(&config)
-	// local_cache := cache.New(nil)
-
-	// set struct pointer
-	err = local_cache.Set("struct*", &Person{"Jack", 18, "London"}, 300)
-	if err != nil {
-		log.Fatalln("reference set error:", err)
-	}
-
-	// get
-	log.Println("---get---")
-	log.Println(local_cache.Get("struct*"))
-
-	// overwrite
-	log.Println("---set overwrite---")
-	log.Println(local_cache.Get("struct*"))
-	err = local_cache.Set("struct*", &Person{"Tom", 38, "London"}, 10)
-	if err != nil {
-		log.Fatalln("reference set error:", err)
-	}
-	log.Println(local_cache.Get("struct*"))
-
-	// test ttl
-	go func() {
-		for {
-			time.Sleep(2 * time.Second)
-			log.Println(local_cache.Get("struct*"))
-		}
-	}()
-
-	time.Sleep(20 * time.Second)
-
-	// if not a pointer cause error
-	// err = local_cache.Set("int", 10, 10)
-	// if err != nil {
-	// 	log.Fatalln("reference set error:", err)
-	// }
+	local_cache, _ := cache.New(nil)                                                 //nil for default config
+	local_cache.Set("key", &Person{Name: "testname", Age: 1, Location: "world"}, 10) //0 for default ttl
+	item, _ := local_cache.Get("key")
+	fmt.Println(item.(*Person))
+	fmt.Println(item.CacheBytes())
 }
-
 ```
 
 ### default config
