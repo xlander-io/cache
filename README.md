@@ -4,20 +4,19 @@
 ```thread-safe```
 ```key-value```
 ```all data in memory```
-```not-persistent```
 ```auto recycling ```
 
 ## Description
 ```
-cache is a reference system, it is NOT an USUAL cache system
-because the value can only be reference type with implementation
-of interface CacheItem support.
+Cache is a reference system, not a typical cache, 
+as values must be of a reference type that implements the CacheItem interface.
+No deep copy occurs during the set process.
 
 deep copy won't happen in set process
 ```
 
 ## support Type
-value type can only be reference type with implementation of interface `CacheItem` support.
+value type can only be pointer type with implementation of interface `CacheItem`.
 
 ## usage
 
