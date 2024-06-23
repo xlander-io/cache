@@ -8,11 +8,12 @@
 
 ## Description
 ```
-Cache is a reference system, not a typical cache, 
-as values must be of a pointer type that implements the CacheItem interface.
-No deep copy occurs during the set process.
-
-deep copy won't happen in set process
+Cache is a smart pointer system, not a typical cache.
+Values must be of a pointer type that implements the CacheItem interface.
+Deep copy won't happen in the set process.
+Two background recycling go-routine:
+1. auto recycling will happen if cache bytes max limit hit
+2. items with expired ttl will be recycled
 ```
 
 ## support Type
