@@ -1,4 +1,4 @@
-# reference
+# xlander-io Cache
 
 ```high-speed```
 ```thread-safe```
@@ -9,20 +9,22 @@
 
 ## Description
 ```
-reference is a reference system , it is not a cache system
-so the value can only be reference type 
+cache is a reference system, it is NOT an USUAL cache system
+because the value can only be reference type with implementation
+of interface CacheItem support.
+
 deep copy won't happen in set process
 ```
 
 ## support Type
-value type can only be Pointer/Slice/Map
+value type can only be reference type with implementation of interface `CacheItem` support.
 
 ## usage
 
 ```go
 //import
 import (
-    "github.com/coreservice-io/reference"
+    "github.com/xlander-io/cache"
 )
 ```
 
@@ -35,8 +37,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/coreservice-io/reference"
+	"github.com/xlander-io/cache"
 )
+
+/***************************
+type CacheItem interface {
+	CacheBytes() int
+}
+***************************/
 
 type Person struct {
 	Name     string
@@ -44,100 +52,88 @@ type Person struct {
 	Location string
 }
 
+// Only support reference type which implement interface CacheItem
+func (p *Person) CacheBytes() int {
+	return 100
+}
+
 func main() {
 
-	lf := reference.New()
-	lf.SetMaxRecords(10000)
+	// modify duplication of the default config is convenient
+	config := cache.DupDefaultConfig()
+	config.CacheBytesLimit = 1024 * 1024 * 50 * 4
 
-	//set ""
-	v := "nothing value"
-	err := lf.Set("", &v, 300) //only support Pointer Slice and Map
-	if err != nil {
-		log.Fatalln("reference set error:", err)
-	}
-	//get ""
-	valuen, ttl := lf.Get("")
-	if valuen != nil {
-		log.Println("key:nothing value:", valuen.(*string), "ttl:", ttl)
-	}
+	local_cache := cache.New(&config)
+	// local_cache := cache.New(nil)
 
-	//set slice
-	err = lf.Set("slice", []int{1, 2, 3}, 300)
+	// set struct pointer
+	err = local_cache.Set("struct*", &Person{"Jack", 18, "London"}, 300)
 	if err != nil {
 		log.Fatalln("reference set error:", err)
 	}
 
-	//set struct pointer
-	err = lf.Set("struct*", &Person{"Jack", 18, "London"}, 300)
-	if err != nil {
-		log.Fatalln("reference set error:", err)
-	}
-
-	//set map
-	err = lf.Set("map", map[string]int{"a": 1, "b": 2}, 100)
-	if err != nil {
-		log.Fatalln("reference set error:", err)
-	}
-
-	//get
+	// get
 	log.Println("---get---")
-	log.Println(lf.Get("slice"))
-	log.Println(lf.Get("struct*"))
-	log.Println(lf.Get("map"))
+	log.Println(local_cache.Get("struct*"))
 
-	//overwrite
+	// overwrite
 	log.Println("---set overwrite---")
-	log.Println(lf.Get("struct*"))
-	err = lf.Set("struct*", &Person{"Tom", 38, "London"}, 10)
+	log.Println(local_cache.Get("struct*"))
+	err = local_cache.Set("struct*", &Person{"Tom", 38, "London"}, 10)
 	if err != nil {
 		log.Fatalln("reference set error:", err)
 	}
-	log.Println(lf.Get("struct*"))
+	log.Println(local_cache.Get("struct*"))
 
-	//test ttl
+	// test ttl
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
-			log.Println(lf.Get("struct*"))
+			log.Println(local_cache.Get("struct*"))
 		}
 	}()
 
 	time.Sleep(20 * time.Second)
 
-	//if not a pointer cause error
-	err = lf.Set("int", 10, 10)
-	if err != nil {
-		log.Fatalln("reference set error:", err)
-	}
+	// if not a pointer cause error
+	// err = local_cache.Set("int", 10, 10)
+	// if err != nil {
+	// 	log.Fatalln("reference set error:", err)
+	// }
 }
 
 ```
 
 ### default config
 
-```
-MaxRecords(*)         = 5000000
-MinRecords            = 10000
-MaxTTLSecs            = 7200
-RecycleIntervalSecs   = 5
-RecycleOverLimitRatio = 0.15
-(* : configurable)
+```go
+var cache_config = &CacheConfig{
+	CacheBytesLimit:          1024 * 1024 * 50, // 50M bytes
+	MaxTtlSecs:               7200,             // 2 hours
+	RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
+	RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
+	RecycleBatchSize:         10000,            // 10000 items recycled in a batch
+	SkipListBufferSize:       20000,            // 20000 commands for chan buffer between internal map and skiplist
+	DefaultTtlSecs:           30,               // default cache item duration is 30 secs
+}
 ```
 
 ### auto recycling
 
-RecycleOverLimitRatio of records will be recycled automatically
-if MaxRecords is reached.
+`RecycleRatioThreshold` or `RecycleBatchSize` of records will be recycled automatically
+if `CacheBytesLimit` is reached.
 
 ### custom config
 
 ```go
-//new instance
-lf,err := reference.New()
-if err != nil {
-    panic(err.Error())
-}
-lf.SetMaxRecords(10000) //custom the max key-value pairs that can be kept in memory
+// modify duplication of the default config is convenience
+config := cache.DupDefaultConfig()
+	
+config.CacheBytesLimit = 1024 * 1024 * 50 * 4
+config.MaxTtlSecs = 7200*2
+// ... ...
+
+local_cache := cache.New(&config)
 ```
 
 ## Benchmark

@@ -460,7 +460,7 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 
 func Test_Cache_BigAmountKey(t *testing.T) {
 	jack := &Person{"Jack", 18, "America"}
-	config := NewDefaultConfig()
+	config := DupDefaultConfig()
 	config.CacheBytesLimit = 1024 * 1024 * 50 * 4
 
 	cache, err := New(&config)
@@ -483,7 +483,7 @@ func Test_Cache_BigAmountKey(t *testing.T) {
 		printMemStats()
 
 		for j := 0; j < 100*10000; j++ {
-			cache.Set(strconv.Itoa(j), jack, int64(rand.Intn(10)+1000))
+			cache.Set(strconv.Itoa(j), jack, int64(rand.Intn(10)+10))
 		}
 
 		//time.Sleep(2 * time.Second) // waiting for skiplist to update ttl

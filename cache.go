@@ -52,7 +52,7 @@ var cache_config = &CacheConfig{
 
 // In go, primitive types, and structs containing only primitive types, are copied by value,
 // so you can copy them by simply assigning to a new variable (or returning from a function).
-func NewDefaultConfig() CacheConfig {
+func DupDefaultConfig() CacheConfig {
 	return *cache_config
 }
 
