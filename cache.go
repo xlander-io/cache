@@ -39,23 +39,17 @@ type Cache struct {
 	now_unixtime  int64
 }
 
-var cache_config = &CacheConfig{
-	CacheBytesLimit:          1024 * 1024 * 50, // 50M bytes
-	MaxTtlSecs:               7200,             // 2 hours
-	RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
-	RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
-	RecycleBatchSize:         100,              // 100 items recycled in a batch
-	SkipListBufferSize:       20000,            // 20000 commands for chan buffer between internal map and skiplist
-}
-
-// In go, primitive types, and structs containing only primitive types, are copied by value,
-// so you can copy them by simply assigning to a new variable (or returning from a function).
-func DupDefaultConfig() CacheConfig {
-	return *cache_config
-}
-
 // if passed user_config is nil, then use the default cache_config.
 func New(user_config *CacheConfig) (*Cache, error) {
+
+	cache_config := &CacheConfig{
+		CacheBytesLimit:          1024 * 1024 * 50, // 50M bytes
+		MaxTtlSecs:               7200,             // 2 hours
+		RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
+		RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
+		RecycleBatchSize:         100,              // 100 items recycled in a batch
+		SkipListBufferSize:       20000,            // 20000 commands for chan buffer between internal map and skiplist
+	}
 
 	//new a cache with default config
 	if user_config != nil {

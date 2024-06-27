@@ -462,8 +462,9 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 func Test_Cache_FastRecycling(t *testing.T) {
 	jack := &Person{"Jack", 18, "America"}
 
-	config := DupDefaultConfig()
-	config.CacheBytesLimit = 1000 * 10000 * 40
+	config := CacheConfig{
+		CacheBytesLimit: 1000 * 10000 * 40,
+	}
 
 	cache, err := New(&config)
 
@@ -484,8 +485,10 @@ func Test_Cache_FastRecycling(t *testing.T) {
 }
 func Test_Cache_BigAmountKey(t *testing.T) {
 	jack := &Person{"Jack", 18, "America"}
-	config := DupDefaultConfig()
-	config.CacheBytesLimit = 1024 * 1024 * 50 * 4
+
+	config := CacheConfig{
+		CacheBytesLimit: 1024 * 1024 * 50 * 4,
+	}
 
 	cache, err := New(&config)
 
