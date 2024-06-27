@@ -73,13 +73,11 @@ if `CacheBytesLimit` is reached.
 
 ```go
 // modify duplication of the default config is convenience
-config := cache.DupDefaultConfig()
-	
-config.CacheBytesLimit = 1024 * 1024 * 50 * 4
-config.MaxTtlSecs = 7200*2
+local_cache := cache.New(&CacheConfig{
+	CacheBytesLimit: 1024 * 1024 * 50 * 4,
+	MaxTtlSecs : 3600*4,
+})
 // ... ...
-
-local_cache := cache.New(&config)
 ```
 
 ## Benchmark
