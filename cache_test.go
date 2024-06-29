@@ -64,8 +64,8 @@ func Test_Cache_Simple(t *testing.T) {
 	}
 
 	jack := &Person{"Jack", 18, "London"}
-	cache.Set("a", jack, 5)
-	cache.Set("b", jack, 5)
+	cache.SetTTL("a", jack, 5)
+	cache.SetTTL("b", jack, 5)
 
 	if int32(2) != cache.Items() {
 		t.Fatalf("cache's total items count should be 2, but %d", cache.Items())
@@ -167,12 +167,12 @@ func Test_Cache_Expire(t *testing.T) {
 
 	jack := &Person{"Jack", 18, "London"}
 
-	cache.Set("1", jack, 5)
-	cache.Set("2", jack, 18)
-	cache.Set("3", jack, 23)
-	cache.Set("4", jack, -100)
-	cache.Set("5", jack, 3000000)
-	cache.Set("6", jack, 35)
+	cache.SetTTL("1", jack, 5)
+	cache.SetTTL("2", jack, 18)
+	cache.SetTTL("3", jack, 23)
+	cache.SetTTL("4", jack, -100)
+	cache.SetTTL("5", jack, 3000000)
+	cache.SetTTL("6", jack, 35)
 
 	if int32(5) != cache.Items() {
 		t.Fatalf("count of cache's total items should be 5, but %d", cache.Items())
@@ -437,7 +437,7 @@ func Test_Cache_SetAndRemove(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		//set
 		for j := 0; j < 10000; j++ {
-			cache.Set(strconv.Itoa(j), jack, 1)
+			cache.SetTTL(strconv.Itoa(j), jack, 1)
 		}
 
 		if int32(10000) != cache.Items() {
@@ -471,7 +471,7 @@ func Test_Cache_FastRecycling(t *testing.T) {
 	}
 
 	for j := 0; j < 1000*10000; j++ {
-		cache.Set(strconv.Itoa(j), jack, int64(60))
+		cache.SetTTL(strconv.Itoa(j), jack, int64(60))
 	}
 
 	for i := 0; i < 50; i++ {
@@ -506,7 +506,7 @@ func Test_Cache_BigAmountKey(t *testing.T) {
 		printMemStats()
 
 		for j := 0; j < 100*10000; j++ {
-			cache.Set(strconv.Itoa(j), jack, int64(rand.Intn(10)+10))
+			cache.SetTTL(strconv.Itoa(j), jack, int64(rand.Intn(10)+10))
 		}
 
 		//time.Sleep(2 * time.Second) // waiting for skiplist to update ttl
@@ -556,11 +556,11 @@ func Test_Cache_RandomSet(t *testing.T) {
 	cache, _ := New(nil)
 	jack := &Person{"Jack", 18, "America"}
 
-	cache.Set("a", jack, 15)
-	cache.Set("b", jack, 19)
-	cache.Set("c", jack, 60)
-	cache.Set("d", jack, 63)
-	cache.Set("e", jack, 65)
+	cache.SetTTL("a", jack, 15)
+	cache.SetTTL("b", jack, 19)
+	cache.SetTTL("c", jack, 60)
+	cache.SetTTL("d", jack, 63)
+	cache.SetTTL("e", jack, 65)
 
 	log.Println("before big amount set")
 	v, ttl := cache.Get("a")
@@ -579,7 +579,7 @@ func Test_Cache_RandomSet(t *testing.T) {
 		for j := 0; j < 10000; j++ {
 			num := rand.Intn(9999999999999)
 			key := strconv.Itoa(num)
-			cache.Set(key, jack, int64(rand.Intn(30)+20))
+			cache.SetTTL(key, jack, int64(rand.Intn(30)+20))
 		}
 
 		if cache.Items()*int32(jack.CacheBytes()) != cache.Bytes() {
@@ -617,9 +617,9 @@ func Test_Cache_KeepTTL(t *testing.T) {
 	mayun := &Person{"Ma Yun", 58, "China"}
 	jack := &Person{"Jack Ma", 18, "America"}
 
-	cache.Set("a", mayun, 30)
-	cache.Set("b", mayun, 40)
-	cache.Set("c", mayun, 50)
+	cache.SetTTL("a", mayun, 30)
+	cache.SetTTL("b", mayun, 40)
+	cache.SetTTL("c", mayun, 50)
 
 	//log
 	{
@@ -660,8 +660,8 @@ func Test_Cache_KeepTTL(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	cache.Set("a", jack, 300) // update ttl to 300 for key 'a'
-	cache.Set("b", jack, 0)   // do nothing
+	cache.SetTTL("a", jack, 300) // update ttl to 300 for key 'a'
+	cache.Keep("b", jack)        // do nothing
 
 	{
 		v, ttl := cache.Get("a")
@@ -720,7 +720,7 @@ func Test_Cache_SetTTL(t *testing.T) {
 	TTLs := []int64{1, 20000, 0, -100, 200, 45, 346547457457457, -20000, 434, 9}
 	for i := 0; i < 10; i++ {
 		key := strconv.Itoa(i)
-		cache.Set(key, mayun, TTLs[i])
+		cache.SetTTL(key, mayun, TTLs[i])
 	}
 
 	for i := 0; i < 10; i++ {
@@ -799,14 +799,14 @@ func BenchmarkLocalReference_SetPointer(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cache.Set(keyArray[i], jack, 300)
+		cache.SetTTL(keyArray[i], jack, 300)
 	}
 }
 
 func BenchmarkLocalReference_GetPointer(b *testing.B) {
 	cache, _ := New(nil)
 	jack := &Person{"Jack", 18, "America"}
-	cache.Set("1", jack, 300)
+	cache.SetTTL("1", jack, 300)
 	var e *Person
 	log.Println(e)
 	b.ReportAllocs()

@@ -18,6 +18,7 @@ type cache_element struct {
 type CacheConfig struct {
 	CacheBytesLimit          int64 // max cache size in bytes
 	MaxTtlSecs               int64 // max cache item duration in secs
+	DefaultTtlSecs           int64 // default set ttl
 	RecycleCheckIntervalSecs int   // recycle process cycle in secs
 	RecycleRatioThreshold    int   // 1-100, old items are recycled once cache reach limit, e.g: 30 for 30% percentage
 	RecycleBatchSize         int   // number of items to be recycled in a batch
@@ -45,6 +46,7 @@ func New(user_config *CacheConfig) (*Cache, error) {
 	cache_config := &CacheConfig{
 		CacheBytesLimit:          1024 * 1024 * 50, // 50M bytes
 		MaxTtlSecs:               7200,             // 2 hours
+		DefaultTtlSecs:           30,               // 30 secs for default ttl secs
 		RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
 		RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
 		RecycleBatchSize:         100,              // 100 items recycled in a batch
@@ -69,6 +71,20 @@ func New(user_config *CacheConfig) (*Cache, error) {
 			//bypass using default value
 		} else {
 			cache_config.MaxTtlSecs = user_config.MaxTtlSecs
+		}
+
+		//
+		if user_config.DefaultTtlSecs < 0 {
+			return nil, errors.New("config DefaultTtlSecs error, val < 0")
+		} else if user_config.DefaultTtlSecs == 0 {
+			//bypass using default value
+		} else {
+			cache_config.DefaultTtlSecs = user_config.DefaultTtlSecs
+		}
+
+		//
+		if cache_config.DefaultTtlSecs > cache_config.MaxTtlSecs {
+			return nil, errors.New("config DefaultTtlSecs || MaxTtlSecs error, DefaultTtlSecs > MaxTtlSecs")
 		}
 
 		//
@@ -163,6 +179,19 @@ func New(user_config *CacheConfig) (*Cache, error) {
 	return cache, nil
 }
 
+// get the config of this cache
+func (cache *Cache) GetConfig() *CacheConfig {
+	return &CacheConfig{
+		CacheBytesLimit:          cache.cache_config.CacheBytesLimit,
+		MaxTtlSecs:               cache.cache_config.MaxTtlSecs,
+		DefaultTtlSecs:           cache.cache_config.DefaultTtlSecs,
+		RecycleCheckIntervalSecs: cache.cache_config.RecycleCheckIntervalSecs,
+		RecycleRatioThreshold:    cache.cache_config.RecycleRatioThreshold,
+		RecycleBatchSize:         cache.cache_config.RecycleBatchSize,
+		SkipListBufferSize:       cache.cache_config.SkipListBufferSize,
+	}
+}
+
 // get current unix time in the cache
 func (cache *Cache) GetUnixTime() int64 {
 	return cache.now_unixtime
@@ -183,12 +212,27 @@ func (cache *Cache) Get(key string) (value CacheItem, ttl int64) {
 	}
 }
 
+func (cache *Cache) Set(key string, value CacheItem) error {
+	return cache.set_(key, value, cache.cache_config.DefaultTtlSecs)
+}
+
+func (cache *Cache) SetTTL(key string, value CacheItem, ttlSecond int64) error {
+	if ttlSecond <= 0 {
+		return errors.New("ttl <=0 err")
+	}
+	return cache.set_(key, value, ttlSecond)
+}
+
+func (cache *Cache) Keep(key string, value CacheItem) error {
+	return cache.set_(key, value, 0)
+}
+
 // for ttlSecond < 0 not allowed
 // for ttlSecond == 0
 // -----1. keep the ttl of previous val if previous value exist
 // -----2. nothing will be set if previous value not exist
 // for ttlSecond > MaxTtlSecs, ttl will be adjusted to MaxTtlSecs
-func (cache *Cache) Set(key string, value CacheItem, ttlSecond int64) error {
+func (cache *Cache) set_(key string, value CacheItem, ttlSecond int64) error {
 
 	if value == nil {
 		return errors.New("value can not be nil")

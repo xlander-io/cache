@@ -19,6 +19,13 @@ Two background recycling go-routine:
 ## support Type
 value type can only be pointer type with implementation of interface `CacheItem`.
 
+### auto recycling
+1. Expired items will be auto recycled every `RecycleCheckIntervalSecs`
+2. If `RecycleRatioThreshold` of `CacheBytesLimit` is reached, a recycling batch
+will start, `RecycleBatchSize` of records will be recycled in each recycling batch.
+The recycling process will end until `RecycleRatioThreshold` relief
+
+
 ## usage
 
 ```go
@@ -44,7 +51,7 @@ func (p *Person) CacheBytes() int {
 
 func main() {
 	local_cache, _ := cache.New(nil)                                                 //nil for default config
-	local_cache.Set("key", &Person{Name: "testname", Age: 1, Location: "world"}, 10) 
+	local_cache.Set("key", &Person{Name: "testname", Age: 1, Location: "world"}) 	 //using default ttl
 	item, _ := local_cache.Get("key")
 	fmt.Println(item.(*Person))
 	fmt.Println(item.CacheBytes())
@@ -57,6 +64,7 @@ func main() {
 var cache_config = &CacheConfig{
 	CacheBytesLimit:          1024 * 1024 * 50, // 50M bytes
 	MaxTtlSecs:               7200,             // 2 hours
+	DefaultTtlSecs:           30,               // 30 secs for default ttl secs
 	RecycleCheckIntervalSecs: 5,                // 5 secs for high efficiency
 	RecycleRatioThreshold:    80,               // 80% usage will trigger recycling
 	RecycleBatchSize:         100,              // 100 items recycled in a batch
@@ -64,13 +72,7 @@ var cache_config = &CacheConfig{
 }
 ```
 
-### auto recycling
-
-`RecycleRatioThreshold` or `RecycleBatchSize` of records will be recycled automatically
-if `CacheBytesLimit` is reached.
-
 ### custom config
-
 ```go
 // modify duplication of the default config is convenience
 local_cache := cache.New(&CacheConfig{
@@ -78,7 +80,7 @@ local_cache := cache.New(&CacheConfig{
 	MaxTtlSecs : 3600*4,
 })
 // ... ...
-```
+``` 
 
 ## Benchmark
 
